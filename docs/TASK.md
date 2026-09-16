@@ -208,18 +208,24 @@ contiene una sola riga con la somma; tutti gli endpoint rispondono 401 senza tok
 ## T05 — PWA: base, sync, ricerca, consultazione
 
 Modello: **Opus 5**, effort **medium**. Branch `task/05-pwa-base`. Leggi anche
-`docs/MODELLO-DATI.md` (sezioni 1, 3 e 4).
+`docs/MODELLO-DATI.md` (sezioni 1, 3 e 4) e `docs/STILE.md` per intero.
 
 ```
 Costruisci l'ossatura della PWA in apps/pwa: navigazione, persistenza, sincronizzazione del
 catalogo, ricerca e scheda prodotto. Niente scanner (T06) e niente sessioni (T07): lascia i punti
 di aggancio.
 
+- Stile: segui docs/STILE.md alla lettera. Token colore e font in `src/stile.css` con `@theme`,
+  solo i token del marchio nelle classi, niente colori di Tailwind. Dipendenze ammesse per lo
+  stile: `@fontsource-variable/montserrat` e `lucide-react`. Sostituisci le icone segnaposto di T01
+  con l'icona descritta in docs/STILE.md sezione 5 (ritaglia la testa dello schnauzer da
+  docs/brand/logo-imballare.png con uno script una tantum, non aggiungere dipendenze di runtime)
+  e aggiorna `theme_color` e `background_color` nel manifest.
 - Dexie con gli store di docs/MODELLO-DATI.md sezione 3, in `src/db.ts`. Hook `useImpostazioni`.
 - Router (react-router) con le rotte: `/` Home, `/consulta` Consultazione, `/sessioni/:id`
   (segnaposto), `/esportazioni` (segnaposto), `/impostazioni`. Layout mobile-first con barra
   inferiore a 4 voci e target touch di almeno 48 px. Tailwind, nessuna libreria di componenti.
-  Palette sobria, alto contrasto, leggibile alla luce del magazzino. Testi UI in italiano.
+  Testi UI in italiano.
 - Impostazioni: URL bridge, token (mascherato), stringa formato con validazione tramite
   `analizzaStringaFormato` e messaggio d'errore, separatore decimale, listino mostrato, modalità
   predefinita, suoni, vibrazione, nome dispositivo. Pulsante "Verifica connessione" che chiama
@@ -242,7 +248,8 @@ di aggancio.
 
 Criteri di accettazione: con il bridge in dev e un catalogo caricato, la PWA sincronizza, cerca
 per codice e descrizione e mostra la scheda; con la rete spenta tutto continua a funzionare;
-Lighthouse PWA installabile (riporta i punteggi).
+Lighthouse PWA installabile (riporta i punteggi); screenshot di Home, Consultazione e Impostazioni
+allegati alla PR, coerenti con docs/STILE.md.
 ```
 
 ## T06 — PWA: scanner
