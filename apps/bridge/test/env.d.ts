@@ -1,9 +1,13 @@
 /// <reference types="@cloudflare/vitest-pool-workers/types" />
 
-import type { Ambiente } from '../src/index.js';
+import type { D1Migration } from 'cloudflare:test';
+import type { Ambiente } from '../src/ambiente.js';
 
-declare module 'cloudflare:test' {
-  // L'augmentation di modulo richiede un'interfaccia vuota che estende i binding del Worker.
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  interface ProvidedEnv extends Ambiente {}
+declare global {
+  namespace Cloudflare {
+    /** `env` dei test: i binding del Worker più le migrazioni passate da vitest.config.ts. */
+    interface Env extends Ambiente {
+      MIGRAZIONI: D1Migration[];
+    }
+  }
 }
