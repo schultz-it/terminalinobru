@@ -21,3 +21,10 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 15. **Lingua italiana ovunque**, incluso codice e commit. Scelta del titolare.
 16. **Slot e-commerce.** Easyfatt gestisce 3 siti, 2 già occupati: il bridge usa il terzo. Se in futuro servirà un altro sito, il bridge potrà fare da proxy verso altri sistemi.
 17. **Workflow di sviluppo.** Ogni task in una chat Claude Code separata con modello ed effort indicati in `docs/TASK.md`; revisione e merge in una chat con Opus. Motivo: risparmio token e contesto pulito.
+
+## 2026-09-17 — Revisione T02
+
+18. **Listini assenti come `null`, non `NaN`.** Il modello dati iniziale diceva NaN; in revisione di T02 si è passati a `null` perché NaN sparisce in `JSON.stringify`, non passa uno schema zod `number` e non si confronta con se stesso. Con `null` la stessa forma vale in memoria, in D1 (colonne JSON) e nelle risposte API. Tipo `Prezzo = number | null` esportato da `core`.
+19. **`easyfatt` dipende da `core` solo per i tipi.** Import `import type`, cancellato in compilazione: zod non entra nel bundle di `easyfatt`. Le due costanti condivise (numero listini, listini vuoti) sono ripetute in `easyfatt` con commento. Alternativa scartata: duplicare i tipi di dominio.
+20. **Il separatore `§` nella stringa formato è letto come tabulazione**, come nella UI di Easyfatt. Da confermare in T10.
+21. **`AppVersion` e `Mode` sono obbligatori nel catalogo**: se mancano il bridge risponde con un errore leggibile invece di assumere `full`. Da confermare in T10 che Easyfatt li invii sempre.

@@ -15,7 +15,7 @@ e test approfonditi, `low` per documentazione.
 | --- | --- | --- | --- | --- | --- |
 | T00 | Documentazione di architettura | Fable 5.1 | — | fatto | diretto su main |
 | T01 | Scaffold monorepo e CI | Sonnet 5 | medium | fatto | [#1](https://github.com/schultz-it/TerminalinoBru/pull/1) |
-| T02 | Libreria `core` ed `easyfatt` | Opus 5 | high | da fare | |
+| T02 | Libreria `core` ed `easyfatt` | Opus 5 | high | fatto | [#2](https://github.com/schultz-it/TerminalinoBru/pull/2) |
 | T03 | Bridge: schema, auth, catalogo | Opus 5 | high | da fare | |
 | T04 | Bridge: sessioni e barcode | Sonnet 5 | high | da fare | |
 | T05 | PWA: base, sync, ricerca, consultazione | Opus 5 | medium | da fare | |
