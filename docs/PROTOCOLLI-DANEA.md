@@ -90,7 +90,9 @@ header per sicurezza.
 Risposta attesa: corpo esattamente `OK` (prima riga). Righe successive opzionali
 `ImageSendURL=...` e `ImageSendFinishURL=...` se si vogliono le immagini: noi non le chiediamo.
 Qualsiasi corpo diverso da `OK` viene mostrato all'utente in Easyfatt come messaggio di errore,
-quindi gli errori devono essere frasi leggibili.
+quindi gli errori devono essere frasi leggibili. Il bridge risponde agli errori con stato HTTP 400
+e corpo in testo puro. **Da verificare**: se Easyfatt mostra il corpo anche con stato 400 o solo con
+200; nel secondo caso il bridge dovrà rispondere 200 con la frase d'errore.
 
 ### 2.2 Struttura XML
 

@@ -127,6 +127,23 @@ describe('GET /api/catalogo', () => {
     expect(delta.corpo.barcodeEliminati).toEqual(['8001234567890', '90273782', 'XY981']);
   });
 
+  it('usa come cursore la data dell ultimo invio riuscito, non l orologio del bridge', async () => {
+    const tenant = await creaTenant();
+    const senzaCatalogo = await scaricaCatalogo(tenant);
+    expect(Number.isNaN(Date.parse(senzaCatalogo.corpo.aggiornatoIl))).toBe(false);
+
+    await inviaCatalogo(tenant, catalogoFullV2);
+    const dopoInvio = await scaricaCatalogo(tenant);
+    const stato = (await (await chiamaApi('/api/stato', tenant.token)).json()) as {
+      ultimoCatalogoIl: string;
+    };
+    expect(dopoInvio.corpo.aggiornatoIl).toBe(stato.ultimoCatalogoIl);
+    // Rispedito come dal, il cursore non fa perdere né ripetere nulla.
+    const delta = await scaricaCatalogo(tenant, dopoInvio.corpo.aggiornatoIl);
+    expect(delta.corpo.prodotti).toEqual([]);
+    expect(delta.corpo.aggiornatoIl).toBe(stato.ultimoCatalogoIl);
+  });
+
   it('rifiuta un parametro dal che non è una data', async () => {
     const tenant = await creaTenant();
     const risposta = await chiamaApi('/api/catalogo?dal=ieri', tenant.token);

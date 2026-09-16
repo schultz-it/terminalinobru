@@ -115,8 +115,11 @@ rotteApi.get('/catalogo', async (c) => {
     barcodeEliminati = barcodeFuori.results.map((riga) => riga.barcode);
   }
 
+  // Il cursore per la prossima sincronia è l'ultimo invio riuscito del catalogo, non l'orologio
+  // di adesso: se un invio è in corso, le sue righe non ancora scritte arriveranno alla prossima
+  // chiamata invece di essere saltate (docs/DECISIONI.md punto 26).
   return c.json({
-    aggiornatoIl: new Date().toISOString(),
+    aggiornatoIl: tenant.ultimo_catalogo_il ?? new Date().toISOString(),
     prodotti: prodotti.results.map(rigaAProdotto),
     barcode: barcode.results.map(rigaABarcode),
     prodottiEliminati,
