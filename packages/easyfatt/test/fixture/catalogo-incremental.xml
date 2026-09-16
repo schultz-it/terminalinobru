@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EasyfattProducts AppVersion="2" Mode="incremental">
+  <UpdatedProducts>
+    <Product>
+      <Code>FILM500</Code>
+      <Barcode>8009876543210</Barcode>
+      <Description>Film estensibile 500 mm trasparente rinforzato</Description>
+      <Um>kg</Um>
+      <NetPrice1>2.9</NetPrice1>
+      <AvailableQty>120.5</AvailableQty>
+      <OrderedQty>50</OrderedQty>
+    </Product>
+  </UpdatedProducts>
+  <DeletedProducts>
+    <Product>
+      <Code>SCAT-30</Code>
+    </Product>
+    <Product>
+      <Code>+banp_1200800p</Code>
+    </Product>
+  </DeletedProducts>
+</EasyfattProducts>

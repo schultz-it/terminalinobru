@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EasyfattProducts AppVersion="2" Mode="full" Warehouse="Principale">
+  <Products>
+    <Product>
+      <Code>+banp_1200800p</Code>
+      <InternalID>1234</InternalID>
+      <Barcode>8001234567890</Barcode>
+      <Description>Bancale in plastica 1200x800</Description>
+      <DescriptionHTML>&lt;p&gt;Bancale in plastica&lt;/p&gt;</DescriptionHTML>
+      <Category>Bancali</Category>
+      <Subcategory>Plastica</Subcategory>
+      <Um>pz</Um>
+      <NetPrice1>30.33</NetPrice1>
+      <NetPrice2>28.50</NetPrice2>
+      <NetPrice9>25</NetPrice9>
+      <GrossPrice1>37.00</GrossPrice1>
+      <GrossPrice2>34.77</GrossPrice2>
+      <Vat Perc="22" Class="Imponibile" Description="Aliquota 22%">22</Vat>
+      <ManageWarehouse>true</ManageWarehouse>
+      <WarehouseLocation>A-03</WarehouseLocation>
+      <MinStock>10</MinStock>
+      <AvailableQty>17</AvailableQty>
+      <OrderedQty>0</OrderedQty>
+      <SupplierCode>F001</SupplierCode>
+      <SupplierName>Fornitore Srl</SupplierName>
+      <SupplierProductCode>ABC</SupplierProductCode>
+      <Notes>Bancale lavabile</Notes>
+      <CustomField1>niente</CustomField1>
+      <ImageFileName>foto.jpg</ImageFileName>
+      <ExtraBarcodes>
+        <Barcode>90273782</Barcode>
+        <Barcode PackageQty="12">XY981</Barcode>
+      </ExtraBarcodes>
+    </Product>
+    <Product>
+      <Code>FILM500</Code>
+      <Barcode>8009876543210</Barcode>
+      <Description>Film estensibile 500 mm trasparente</Description>
+      <Um>kg</Um>
+      <NetPrice1>2.5</NetPrice1>
+      <Vat Perc="10">10</Vat>
+      <ManageWarehouse>false</ManageWarehouse>
+      <AvailableQty>-3.5</AvailableQty>
+      <ExtraBarcodes>
+        <Barcode>8009876543210</Barcode>
+      </ExtraBarcodes>
+    </Product>
+    <Product>
+      <Code>SCAT-30</Code>
+      <Description></Description>
+      <Category></Category>
+      <NetPrice1></NetPrice1>
+      <MinStock>non un numero</MinStock>
+      <Vat>4</Vat>
+    </Product>
+  </Products>
+</EasyfattProducts>
