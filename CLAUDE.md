@@ -24,7 +24,7 @@ App PWA per Android che emula un terminalino barcode e dialoga con Danea Easyfat
 
 - Monorepo `pnpm` + TypeScript strict. Node 22.
 - `packages/core`: tipi di dominio e funzioni pure (zod per validazione).
-- `packages/easyfatt`: protocolli Danea (parser catalogo XML, generatore file terminalino, generatore Easyfatt-XML). Zero dipendenze oltre `fast-xml-parser`.
+- `packages/easyfatt`: protocolli Danea (parser catalogo XML, generatore file terminalino, generatore Easyfatt-XML). Unica dipendenza di runtime `fast-xml-parser`; da `core` importa solo tipi (`import type`), mai codice.
 - `apps/bridge`: Cloudflare Worker con Hono + D1 (SQLite). Serve anche la PWA compilata come asset statici.
 - `apps/pwa`: Vite + React + TypeScript + Tailwind, Dexie (IndexedDB), `vite-plugin-pwa`, `barcode-detector` (polyfill di BarcodeDetector).
 - Test: Vitest (`@cloudflare/vitest-pool-workers` per il bridge). Lint: ESLint + Prettier.

@@ -1,5 +1,5 @@
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
-import type { Barcode, Prodotto } from '@terminalinobru/core';
+import type { Barcode, Prezzo, Prodotto } from '@terminalinobru/core';
 
 /**
  * Numero di listini di Easyfatt (NetPrice1..9). Ripetuto qui perché `easyfatt` importa da `core`
@@ -7,9 +7,9 @@ import type { Barcode, Prodotto } from '@terminalinobru/core';
  */
 const NUMERO_LISTINI = 9;
 
-/** Array di nove listini assenti (NaN), come `prezziVuoti` di `core`. */
-function prezziVuoti(): number[] {
-  return new Array<number>(NUMERO_LISTINI).fill(Number.NaN);
+/** Array di nove listini assenti (null), come `prezziVuoti` di `core`. */
+function prezziVuoti(): Prezzo[] {
+  return new Array<Prezzo>(NUMERO_LISTINI).fill(null);
 }
 
 /** Modalità di invio del catalogo dichiarata da Easyfatt. */
@@ -114,8 +114,8 @@ function nodi(valore: unknown): Nodo[] {
   return valori(valore).map((v) => (typeof v === 'object' ? (v as Nodo) : {}));
 }
 
-/** Legge i nove listini in un array, con NaN dove il listino manca. */
-function listini(prodotto: Nodo, prefisso: 'NetPrice' | 'GrossPrice'): number[] {
+/** Legge i nove listini in un array, con null dove il listino manca. */
+function listini(prodotto: Nodo, prefisso: 'NetPrice' | 'GrossPrice'): Prezzo[] {
   const prezzi = prezziVuoti();
   for (let indice = 0; indice < NUMERO_LISTINI; indice += 1) {
     const valore = numero(prodotto, `${prefisso}${indice + 1}`);

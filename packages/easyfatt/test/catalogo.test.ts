@@ -32,8 +32,8 @@ describe('analizzaCatalogo, full protocollo 2', () => {
       categoria: 'Bancali',
       sottocategoria: 'Plastica',
       um: 'pz',
-      prezziNetti: [30.33, 28.5, NaN, NaN, NaN, NaN, NaN, NaN, 25],
-      prezziLordi: [37, 34.77, NaN, NaN, NaN, NaN, NaN, NaN, NaN],
+      prezziNetti: [30.33, 28.5, null, null, null, null, null, null, 25],
+      prezziLordi: [37, 34.77, null, null, null, null, null, null, null],
       ivaPerc: 22,
       gestioneMagazzino: true,
       ubicazione: 'A-03',
@@ -55,7 +55,7 @@ describe('analizzaCatalogo, full protocollo 2', () => {
     expect(scatola?.giacenza).toBeUndefined();
     expect(scatola?.note).toBeUndefined();
     expect(scatola?.eliminatoIl).toBeUndefined();
-    expect(scatola?.prezziNetti.every((p) => Number.isNaN(p))).toBe(true);
+    expect(scatola?.prezziNetti.every((p) => p === null)).toBe(true);
   });
 
   it('ignora i valori numerici non interpretabili', () => {

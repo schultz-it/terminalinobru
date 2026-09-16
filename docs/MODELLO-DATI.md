@@ -13,8 +13,8 @@ type Prodotto = {
   categoria?: string;
   sottocategoria?: string;
   um?: string;
-  prezziNetti: number[];       // indice 0 = listino 1 ... fino a 9, NaN se assente
-  prezziLordi: number[];
+  prezziNetti: (number | null)[]; // indice 0 = listino 1 ... fino a 9, null se assente
+  prezziLordi: (number | null)[]; // null e non NaN: sopravvive a JSON, D1 e zod
   ivaPerc?: number;
   gestioneMagazzino: boolean;
   ubicazione?: string;

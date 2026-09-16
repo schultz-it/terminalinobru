@@ -5,7 +5,7 @@
 
 /** Numero di listini gestiti da Easyfatt (1..9). */
 export { NUMERO_LISTINI } from './tipi.js';
-/** Array di listini tutti assenti (NaN), da usare come valore di default. */
+/** Array di listini tutti assenti (null), da usare come valore di default. */
 export { prezziVuoti } from './tipi.js';
 /** Impostazioni di partenza dell'app, con `stringaFormato` 'A,Q'. */
 export { IMPOSTAZIONI_DEFAULT } from './tipi.js';
@@ -27,6 +27,7 @@ export type {
   Impostazioni,
   ModalitaScansione,
   OrigineBarcode,
+  Prezzo,
   Prodotto,
   Riga,
   Sessione,

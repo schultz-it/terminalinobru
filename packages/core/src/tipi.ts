@@ -4,20 +4,23 @@ import { z } from 'zod';
 export const NUMERO_LISTINI = 9;
 
 /**
- * Prezzo di un listino: numero oppure NaN quando il listino non è valorizzato
- * (vedi docs/MODELLO-DATI.md sezione 1).
+ * Prezzo di un listino: numero oppure null quando il listino non è valorizzato
+ * (vedi docs/MODELLO-DATI.md sezione 1). Si usa null e non NaN perché sopravvive a JSON.
  */
-const schemaPrezzo = z.union([z.number(), z.nan()]);
+const schemaPrezzo = z.number().nullable();
 
-/** Array di listini lungo {@link NUMERO_LISTINI}, riempito di NaN per i listini assenti. */
+/** Prezzo di un listino, null se assente. */
+export type Prezzo = z.output<typeof schemaPrezzo>;
+
+/** Array di listini lungo {@link NUMERO_LISTINI}, riempito di null per i listini assenti. */
 const schemaPrezzi = z
   .array(schemaPrezzo)
   .max(NUMERO_LISTINI)
   .default(() => prezziVuoti());
 
 /** Array di listini tutti assenti, da usare come valore di default. */
-export function prezziVuoti(): number[] {
-  return new Array<number>(NUMERO_LISTINI).fill(Number.NaN);
+export function prezziVuoti(): Prezzo[] {
+  return new Array<Prezzo>(NUMERO_LISTINI).fill(null);
 }
 
 /** Schema di un prodotto di catalogo, con chiave il codice Easyfatt. */

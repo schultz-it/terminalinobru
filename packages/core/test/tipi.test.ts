@@ -25,10 +25,10 @@ describe('valori di default', () => {
     });
   });
 
-  it('i listini vuoti sono nove NaN', () => {
+  it('i listini vuoti sono nove null', () => {
     const prezzi = prezziVuoti();
     expect(prezzi).toHaveLength(NUMERO_LISTINI);
-    expect(prezzi.every((p) => Number.isNaN(p))).toBe(true);
+    expect(prezzi.every((p) => p === null)).toBe(true);
   });
 
   it('rifiuta un listino mostrato fuori intervallo', () => {
@@ -49,15 +49,23 @@ describe('schemaProdotto', () => {
     expect(p.ivaPerc).toBeUndefined();
   });
 
-  it('accetta NaN nei listini assenti', () => {
+  it('accetta null nei listini assenti e rifiuta NaN', () => {
     const p = schemaProdotto.parse({
       codice: 'A',
       descrizione: 'B',
       aggiornatoIl: '2026-09-16T10:00:00.000Z',
-      prezziNetti: [30.33, Number.NaN],
-      prezziLordi: [37, Number.NaN],
+      prezziNetti: [30.33, null],
+      prezziLordi: [37, null],
     });
-    expect(Number.isNaN(p.prezziNetti[1])).toBe(true);
+    expect(p.prezziNetti[1]).toBeNull();
+    expect(
+      schemaProdotto.safeParse({
+        codice: 'A',
+        descrizione: 'B',
+        aggiornatoIl: '2026-09-16T10:00:00.000Z',
+        prezziNetti: [Number.NaN],
+      }).success,
+    ).toBe(false);
   });
 
   it('rifiuta un prodotto senza codice', () => {
