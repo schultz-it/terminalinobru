@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+.wrangler
+pnpm-lock.yaml
+
+# La documentazione è scritta a mano con tabelle e diagrammi allineati: Prettier li riflowerebbe.
+docs
+*.md

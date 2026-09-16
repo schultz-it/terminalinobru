@@ -1,0 +1,5 @@
+# Copia questo file in .dev.vars (ignorato da git) e compila i valori per lo sviluppo locale.
+# Nessun segreto reale va committato.
+EASYFATT_UTENTE=easyfatt
+EASYFATT_PASSWORD=cambiami
+APP_TOKEN=cambiami
