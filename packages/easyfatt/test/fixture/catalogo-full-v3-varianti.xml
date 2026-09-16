@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EasyfattProducts AppVersion="3" Mode="full">
+  <Products>
+    <Product>
+      <Code>MAGL-0042</Code>
+      <Barcode>0042</Barcode>
+      <Description>Maglietta cotone</Description>
+      <Um>pz</Um>
+      <NetPrice1>9.9</NetPrice1>
+      <AvailableQty>40</AvailableQty>
+      <Variants>
+        <Variant>
+          <Size>M</Size><Color>Blu</Color>
+          <Barcode>0042/M/Blu</Barcode>
+          <AvailableQty>23</AvailableQty>
+        </Variant>
+        <Variant>
+          <Size>L</Size><Color>Rosso</Color>
+          <Barcode>0042/L/Rosso</Barcode>
+          <AvailableQty>17</AvailableQty>
+        </Variant>
+        <Variant>
+          <Size>XL</Size><Color>Verde</Color>
+          <Barcode></Barcode>
+          <AvailableQty>0</AvailableQty>
+        </Variant>
+      </Variants>
+    </Product>
+    <Product>
+      <Code>SENZA-BARCODE</Code>
+      <Description>Prodotto sfuso senza codice a barre</Description>
+      <Um>mt</Um>
+      <ExtraBarcodes>
+        <Barcode PackageQty="0">SCARTA0</Barcode>
+      </ExtraBarcodes>
+    </Product>
+  </Products>
+</EasyfattProducts>
