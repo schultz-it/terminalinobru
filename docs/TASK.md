@@ -1,0 +1,421 @@
+# Piano dei task
+
+Ogni task si esegue in una **nuova chat Claude Code** nella cartella della repo, con il modello e
+l'effort indicati, incollando il prompt della sezione. Quando la PR è aperta, si apre una **chat di
+revisione con Opus 5, effort medium**, con il prompt della sezione "Revisione". La chat di revisione
+fa il merge e aggiorna la tabella qui sotto.
+
+Modelli: Sonnet 5 per lavoro ben specificato e ripetitivo, Opus 5 per logica delicata e UI,
+Fable 5.1 solo se un task si incaglia. Effort: `medium` di norma, `high` dove servono ragionamento
+e test approfonditi, `low` per documentazione.
+
+## Stato
+
+| Task | Titolo | Modello | Effort | Stato | PR |
+| --- | --- | --- | --- | --- | --- |
+| T00 | Documentazione di architettura | Fable 5.1 | — | fatto | diretto su main |
+| T01 | Scaffold monorepo e CI | Sonnet 5 | medium | da fare | |
+| T02 | Libreria `core` ed `easyfatt` | Opus 5 | high | da fare | |
+| T03 | Bridge: schema, auth, catalogo | Opus 5 | high | da fare | |
+| T04 | Bridge: sessioni e barcode | Sonnet 5 | high | da fare | |
+| T05 | PWA: base, sync, ricerca, consultazione | Opus 5 | medium | da fare | |
+| T06 | PWA: scanner | Opus 5 | high | da fare | |
+| T07 | PWA: sessioni ed export | Opus 5 | high | da fare | |
+| T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | da fare | |
+| T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | da fare | |
+| T10 | Collaudo con Easyfatt reale | Opus 5 | high | da fare | |
+| T11 | Guida utente | Sonnet 5 | low | da fare | |
+| T12 | v2: DDT completi via XML | Fable 5.1 | high | futuro | |
+
+## Prompt comune di apertura
+
+Ogni prompt sotto inizia implicitamente così (incollarlo prima del testo del task):
+
+```
+Lavori nella repo TerminalinoBru. Esegui `git checkout main && git pull`. Leggi CLAUDE.md,
+docs/ARCHITETTURA.md e la sezione del tuo task in docs/TASK.md. Leggi gli altri documenti in docs/
+solo se il task li cita. Crea il branch indicato, lavora, committa con messaggi in italiano, apri la
+PR verso main con `gh pr create` usando il titolo del task, e nella descrizione elenca cosa hai
+fatto, i comandi eseguiti con esito, e cosa non hai potuto verificare. Non fare merge. Se trovi
+un'incoerenza tra i documenti e quello che devi fare, fermati e segnalalo nella PR invece di
+inventare.
+```
+
+## Prompt di revisione (Opus 5, medium)
+
+```
+Lavori nella repo TerminalinoBru come revisore. Leggi CLAUDE.md e la sezione del task TNN in
+docs/TASK.md. Fai checkout della PR #NN con `gh pr checkout NN`. Esegui pnpm install, pnpm -r
+typecheck, pnpm -r lint, pnpm -r test, pnpm -r build e riporta l'esito reale. Verifica uno per uno i
+criteri di accettazione del task. Leggi il codice cercando: logica di dominio finita nel posto
+sbagliato, dipendenze non richieste, segreti in chiaro, test che non testano nulla, testo in
+inglese dove doveva essere italiano. Correggi direttamente i problemi piccoli con un commit sulla
+PR; per i problemi grandi scrivi un commento sulla PR e fermati. Se tutto è a posto: squash merge
+con `gh pr merge NN --squash --delete-branch`, poi su main aggiorna la riga del task in
+docs/TASK.md (stato "fatto", numero PR) e committa. Riporta un riepilogo di tre righe.
+```
+
+---
+
+## T01 — Scaffold monorepo e CI
+
+Modello: **Sonnet 5**, effort **medium**. Branch `task/01-scaffold`.
+
+```
+Crea lo scheletro del monorepo descritto in CLAUDE.md, senza logica applicativa.
+
+- pnpm workspaces con `apps/*` e `packages/*`, Node 22 in `.nvmrc` e `engines`. TypeScript strict
+  con `tsconfig.base.json` condiviso. ESLint (flat config) + Prettier con configurazione unica alla
+  radice. Script alla radice: `typecheck`, `lint`, `test`, `build` che delegano con `pnpm -r`.
+- `packages/core` e `packages/easyfatt`: pacchetti TypeScript con `src/index.ts` che esporta un
+  segnaposto, Vitest configurato, un test banale che passa. `easyfatt` dipende da `fast-xml-parser`;
+  `core` da `zod`.
+- `apps/bridge`: Cloudflare Worker con Hono. `wrangler.toml` con binding D1 `DB`, binding assets
+  che punta a `../pwa/dist` con `not_found_handling = "single-page-application"` e
+  `run_worker_first = ["/api/*", "/easyfatt/*"]`. Un endpoint `GET /api/salute` che risponde
+  `{ "ok": true }`. Cartella `migrations/` vuota con un README di una riga. Vitest con
+  `@cloudflare/vitest-pool-workers` e un test sull'endpoint. Un file `.dev.vars.example`.
+- `apps/pwa`: Vite + React + TypeScript + Tailwind v4 + `vite-plugin-pwa` con manifest
+  (nome "TerminalinoBru", colore tema, icone segnaposto generate come PNG semplici), `display:
+  standalone`. Una pagina che mostra "TerminalinoBru" e chiama `/api/salute` mostrando l'esito.
+  In dev, proxy di `/api` verso `http://localhost:8787`. Vitest con jsdom e un test banale.
+- GitHub Actions `.github/workflows/ci.yml`: su PR e push su main, pnpm install con cache,
+  typecheck, lint, test, build. Nessun deploy.
+- Aggiorna la sezione "Comandi" di CLAUDE.md solo se i comandi reali differiscono.
+
+Criteri di accettazione: `pnpm install && pnpm -r typecheck && pnpm -r lint && pnpm -r test &&
+pnpm -r build` passano in locale; `pnpm --filter bridge dev` serve la PWA compilata e l'endpoint
+salute; il workflow CI è verde sulla PR.
+```
+
+## T02 — Libreria `core` ed `easyfatt`
+
+Modello: **Opus 5**, effort **high**. Branch `task/02-librerie`. Leggi anche
+`docs/PROTOCOLLI-DANEA.md` (sezioni 1, 2 e 3) e `docs/MODELLO-DATI.md` (sezione 1).
+
+```
+Implementa `packages/core` e `packages/easyfatt` come descritto in docs/ARCHITETTURA.md sezioni
+2.1 e 2.2, con i tipi di docs/MODELLO-DATI.md sezione 1 e i formati di docs/PROTOCOLLI-DANEA.md.
+
+packages/core:
+- Tipi e schemi zod per Prodotto, Barcode, Sessione, Riga, Impostazioni, con i valori di default.
+- `aggregaRighe`, `normalizza`, `cercaProdotti` (con costruzione dell'indice separata:
+  `costruisciIndice(prodotti)`), `transizioneStato`, `rilevaInputLettore` (riceve eventi
+  `{tasto, istante}` e restituisce il codice quando riconosce una raffica sotto 50 ms per tasto
+  terminata da Invio, altrimenti null; deve ignorare la digitazione umana).
+- Test unitari per ogni funzione, inclusi casi limite: query vuota, accenti, codici con simboli
+  come `+banp_1200800p`, quantità decimali, sessione riaperta.
+
+packages/easyfatt:
+- `analizzaStringaFormato(stringa)`: restituisce `{ tipo: 'delimitato' | 'fisso', campi, separatore }`
+  o un errore descrittivo in italiano. Caratteri ammessi A Q q L S X; in delimitato ogni campo è una
+  sola lettera separata da un carattere non lettera; in fisso solo lettere con lunghezze per
+  posizione. Rifiuta stringhe senza A o senza Q.
+- `generaFileTerminale(righe, opzioni)`: righe `{codice, quantita, lotto?, scadenza?}`, opzioni
+  `{stringaFormato, separatoreDecimale, fineRiga}`. Delimitato: campi nell'ordine della stringa,
+  L e S vuoti se assenti, X vuoto. Fisso: codice allineato a sinistra riempito con spazi e troncato
+  se più lungo, Q intero allineato a destra con zeri, q decimali troncati. Quantità con al massimo
+  3 decimali, senza zeri finali. Scadenza in formato `aaaammgg`.
+- `analizzaCatalogo(xml)`: parser di EasyfattProducts protocollo 2 e 3, modalità full e
+  incremental. Restituisce `{ modalita, magazzino?, prodotti: Prodotto[], barcode: Barcode[],
+  codiciEliminati: string[] }`. Un prodotto genera un Barcode per `Barcode`, uno per ogni
+  `ExtraBarcodes/Barcode` (con quantitaConfezione da PackageQty) e uno per ogni `Variants/Variant/
+  Barcode`, tutti con origine 'easyfatt'. Prezzi NetPrice1..9 e GrossPrice1..9 in array; campi
+  mancanti diventano undefined, mai stringhe vuote. Errori di parsing con messaggio in italiano.
+  Deve reggere cataloghi da 10.000 prodotti senza ricorsione profonda.
+- `generaDocumentiVuoto()`: l'XML EasyfattDocuments vuoto di docs/PROTOCOLLI-DANEA.md sezione 3.
+- Fixture in `packages/easyfatt/test/fixture/`: un catalogo full v2 con 3 prodotti che coprono
+  tutti i campi, uno v3 con varianti, uno incremental con UpdatedProducts e DeletedProducts, uno
+  malformato. Test per ogni funzione e ogni fixture, più test di proprietà sul round trip
+  stringa formato → file → righe attese.
+
+Criteri di accettazione: copertura 100% righe su `packages/easyfatt` (riporta il numero reale);
+nessuna dipendenza aggiunta oltre zod e fast-xml-parser; le API sono esportate da `src/index.ts`
+con JSDoc in italiano di una riga per funzione.
+```
+
+## T03 — Bridge: schema, auth, catalogo
+
+Modello: **Opus 5**, effort **high**. Branch `task/03-bridge-catalogo`. Leggi anche
+`docs/MODELLO-DATI.md` (sezioni 2 e 4) e `docs/PROTOCOLLI-DANEA.md` (sezione 2).
+
+```
+Implementa in apps/bridge lo schema D1, l'autenticazione e la ricezione del catalogo.
+
+- Migrazione `0001_schema.sql` con le tabelle di docs/MODELLO-DATI.md sezione 2.
+- Script `pnpm --filter bridge tenant:crea -- --nome "..." --utente "..."` che genera password
+  Easyfatt e token app casuali, stampa i valori in chiaro una sola volta e inserisce il tenant con
+  gli hash SHA-256 (usa `wrangler d1 execute`, con flag `--remote` opzionale). Documenta l'uso in
+  apps/bridge/README.md.
+- Middleware `autenticaEasyfatt`: Basic auth oppure header `HTTP_X_AUTHORIZATION`/`X-Authorization`
+  con base64 di `utente:password`; risolve il tenant; confronto hash a tempo costante; su fallimento
+  risponde 401 con testo puro "Credenziali non valide" e header `WWW-Authenticate: Basic`.
+- Middleware `autenticaApp`: `Authorization: Bearer <token>`; risolve il tenant; 401 JSON
+  `{ "errore": "Token non valido" }`.
+- `POST /easyfatt/catalogo`: legge il campo multipart `file`, chiama `analizzaCatalogo` da
+  packages/easyfatt, esegue upsert di prodotti e barcode a blocchi di 50 statement con `db.batch`
+  in una transazione logica (se un blocco fallisce, risponde errore e lascia `ultimo_catalogo_il`
+  invariato). In modalità full imposta `eliminato_il` sui prodotti e barcode di origine easyfatt
+  assenti nel file; in incremental applica solo Updated e Deleted. I barcode con origine `app`
+  non vengono mai toccati dal catalogo, ma se Easyfatt invia lo stesso barcode l'origine diventa
+  easyfatt. Aggiorna `ultimo_catalogo_il`. Risponde `200` con corpo esattamente `OK`. Su errore
+  risponde `400` con una frase in italiano leggibile, mai JSON, mai stack trace.
+- `GET /easyfatt/documenti`: risponde `generaDocumentiVuoto()` con content-type
+  `application/xml; charset=utf-8`.
+- `GET /api/stato` e `GET /api/catalogo?dal=` come da docs/MODELLO-DATI.md sezione 4. Senza `dal`
+  restituisce tutti i non eliminati; con `dal` anche gli eliminati dopo quella data nelle liste
+  `*Eliminati`. Limite di risposta: se i prodotti superano 20.000 restituisci 413 con messaggio.
+- Test con vitest-pool-workers e D1 in memoria con le migrazioni applicate: auth ok/ko per entrambi
+  i middleware, push full poi incremental con verifica dei tombstone, delta con `dal`, catalogo
+  malformato, corpo senza campo file. Usa le fixture di packages/easyfatt (importale, non copiarle).
+
+Criteri di accettazione: `curl -u utente:password -F file=@fixture.xml localhost:8787/easyfatt/
+catalogo` risponde `OK` in dev locale (riporta l'output); i test coprono ogni ramo di errore;
+nessuna logica di parsing nel bridge.
+```
+
+## T04 — Bridge: sessioni e barcode
+
+Modello: **Sonnet 5**, effort **high**. Branch `task/04-bridge-sessioni`. Leggi anche
+`docs/MODELLO-DATI.md` (sezioni 2 e 4).
+
+```
+Implementa in apps/bridge gli endpoint sessioni e barcode, tutti dietro `autenticaApp`.
+
+- `POST /api/sessioni`: valida con lo schema zod di packages/core (stato deve essere "chiusa",
+  righe non vuote). Upsert per id: se esiste, sostituisce righe e campi, mantiene `ricevuta_il`
+  originale e riporta lo stato a "chiusa". Risposta 201 `{ id, ricevutaIl }`.
+- `GET /api/sessioni?stato=`: elenco senza righe, ordinato per `chiusa_il` decrescente, con
+  conteggio righe e somma quantità. `GET /api/sessioni/:id`: con righe in ordine.
+- `PATCH /api/sessioni/:id` `{ stato }`: usa `transizioneStato` di core; 409 se non ammessa;
+  imposta `esportata_il` o `importata_il`.
+- `GET /api/sessioni/:id/terminale.txt`: aggrega con `aggregaRighe`, genera con
+  `generaFileTerminale` usando `stringa_formato` e `separatore_decimale` del tenant, risponde
+  `text/plain; charset=utf-8` con `Content-Disposition: attachment; filename="terminale-<tipo>-
+  <nome-sanificato>-<aaaammgg>.txt"`. Se lo stato è "chiusa" lo porta a "esportata" (query
+  `?soloAnteprima=1` per non cambiare stato).
+- `POST /api/barcode`: array di abbinamenti; upsert con origine "app" solo se il barcode non ha già
+  origine "easyfatt"; 204. `GET /api/barcode/nuovi.csv`: CSV con intestazione `codice;barcode`
+  degli abbinamenti con origine "app", `text/csv`.
+- Test: ciclo completo crea → elenco → dettaglio → file → PATCH; transizioni vietate; upsert
+  ripetuto; barcode già di Easyfatt non sovrascritto; sessione di un altro tenant non visibile
+  (crea due tenant nel test).
+
+Criteri di accettazione: il file generato per una sessione con lo stesso prodotto su due righe
+contiene una sola riga con la somma; tutti gli endpoint rispondono 401 senza token.
+```
+
+## T05 — PWA: base, sync, ricerca, consultazione
+
+Modello: **Opus 5**, effort **medium**. Branch `task/05-pwa-base`. Leggi anche
+`docs/MODELLO-DATI.md` (sezioni 1, 3 e 4).
+
+```
+Costruisci l'ossatura della PWA in apps/pwa: navigazione, persistenza, sincronizzazione del
+catalogo, ricerca e scheda prodotto. Niente scanner (T06) e niente sessioni (T07): lascia i punti
+di aggancio.
+
+- Dexie con gli store di docs/MODELLO-DATI.md sezione 3, in `src/db.ts`. Hook `useImpostazioni`.
+- Router (react-router) con le rotte: `/` Home, `/consulta` Consultazione, `/sessioni/:id`
+  (segnaposto), `/esportazioni` (segnaposto), `/impostazioni`. Layout mobile-first con barra
+  inferiore a 4 voci e target touch di almeno 48 px. Tailwind, nessuna libreria di componenti.
+  Palette sobria, alto contrasto, leggibile alla luce del magazzino. Testi UI in italiano.
+- Impostazioni: URL bridge, token (mascherato), stringa formato con validazione tramite
+  `analizzaStringaFormato` e messaggio d'errore, separatore decimale, listino mostrato, modalità
+  predefinita, suoni, vibrazione, nome dispositivo. Pulsante "Verifica connessione" che chiama
+  `/api/stato` e mostra nome tenant, data ultimo catalogo, numero prodotti. Pulsante "Sincronizza
+  catalogo".
+- Modulo `src/sync/catalogo.ts`: scarica `/api/catalogo?dal=` con l'ultima sincronizzazione
+  salvata, applica in una transazione Dexie (upsert e cancellazioni), salva la nuova data. Sync
+  automatica all'avvio se online e sono passate più di 6 ore. Gestione errori con messaggio
+  leggibile, mai crash. Un componente `StatoRete` mostra online/offline e data ultima sync.
+- Ricerca: `costruisciIndice` di core in un hook con cache in memoria invalidata dopo la sync;
+  campo di ricerca con risultati mentre si digita, massimo 30, evidenziando codice e descrizione.
+- Scheda prodotto (`/consulta/:codice`): descrizione, codice, prezzo del listino scelto netto e
+  lordo, giacenza con "aggiornata il", ordinato, scorta minima, ubicazione, categoria, barcode
+  associati, note. Segnaposto per il pulsante scansione.
+- Home: card "Nuova sessione" (disabilitata, T07), "Consulta prodotto", stato sync.
+- Setup via QR: su `/impostazioni` un pulsante "Importa da QR" segnaposto che accetta per ora un
+  testo incollato nel formato `terminalinobru://setup?url=...&token=...` (lo scanner arriva in T06).
+- Test: sync con risposte finte (msw non serve, basta un fetch mock), ricerca, validazione
+  impostazioni.
+
+Criteri di accettazione: con il bridge in dev e un catalogo caricato, la PWA sincronizza, cerca
+per codice e descrizione e mostra la scheda; con la rete spenta tutto continua a funzionare;
+Lighthouse PWA installabile (riporta i punteggi).
+```
+
+## T06 — PWA: scanner
+
+Modello: **Opus 5**, effort **high**. Branch `task/06-pwa-scanner`.
+
+```
+Implementa il componente scanner della PWA come descritto in docs/ARCHITETTURA.md sezione 2.4.
+
+- `src/scanner/Scanner.tsx`: espone `onCodice(codice, sorgente)` con sorgente `fotocamera` |
+  `lettore` | `manuale`. Tre sorgenti sempre attive quando il componente è montato.
+- Fotocamera: `BarcodeDetector` nativo se disponibile, altrimenti il polyfill `barcode-detector`
+  (aggiungilo come dipendenza). Formati: ean_13, ean_8, upc_a, upc_e, code_128, code_39, itf, qr_code.
+  Video a pieno schermo con riquadro guida, torcia se supportata, scelta fotocamera posteriore.
+  Anti-rimbalzo: lo stesso codice non viene riemesso per 1,5 s. Rilascia la fotocamera quando il
+  componente viene smontato o la pagina va in background. Gestisci il rifiuto del permesso con
+  un messaggio e il pulsante per riprovare.
+- Lettore in modalità tastiera: listener `keydown` a livello documento che alimenta
+  `rilevaInputLettore` di core; non deve interferire con i campi di testo in cui l'utente sta
+  digitando (distingui tramite la velocità dei tasti, non tramite il focus).
+- Manuale: campo di testo con pulsante "Cerca" che emette il codice digitato.
+- Feedback: suono breve di conferma e vibrazione 50 ms per codice trovato; suono diverso e
+  vibrazione doppia per codice sconosciuto. Suoni generati con Web Audio, niente file. Rispetta le
+  impostazioni suoni/vibrazione.
+- Risoluzione: hook `useRisolviCodice(codice)` che cerca prima in `barcode`, poi in `prodotti`
+  per codice esatto, e restituisce il prodotto o `null`.
+- Integra nella Consultazione: pulsante scansione apre lo scanner, codice trovato porta alla
+  scheda; codice sconosciuto mostra il flusso "Abbina a un prodotto" con la ricerca, salva in
+  Dexie con origine "app" e accoda l'invio al bridge (`codaUpload`).
+- Completa "Importa da QR" nelle Impostazioni con lo scanner.
+- Pagina di prova `/scanner-test` (solo in dev) che elenca i codici letti con sorgente e tempi.
+- Test sulle funzioni pure (anti-rimbalzo, parsing del QR di setup, risoluzione).
+
+Criteri di accettazione: su Chrome Android reale legge un EAN-13 stampato in meno di un secondo
+(riporta come hai verificato, o segnala che non hai potuto); un lettore Bluetooth simulato con
+eventi tastiera sintetici viene riconosciuto; la fotocamera si spegne uscendo dalla pagina.
+```
+
+## T07 — PWA: sessioni ed export
+
+Modello: **Opus 5**, effort **high**. Branch `task/07-pwa-sessioni`. Leggi anche
+`docs/MODELLO-DATI.md` (sezioni 1 e 3).
+
+```
+Implementa le sessioni di lavoro nella PWA (docs/ARCHITETTURA.md sezioni 3.2, 3.3, 3.4).
+
+- Home: "Nuova sessione" con scelta tipo (inventario, DDT, carico), nome (proposto:
+  "<Tipo> <data> <ora>"), note, modalità scansione (default da impostazioni). Elenco sessioni
+  aperte e delle ultime chiuse con tipo, nome, righe, stato.
+- Schermata sessione: scanner in alto (riuso di T06), sotto l'ultima riga inserita e l'elenco
+  righe in ordine inverso con modifica quantità e cancellazione (con conferma). In modalità
+  "chiedi quantità": dopo la lettura si apre un foglio con descrizione, giacenza teorica (se
+  inventario), tastierino numerico grande, decimali ammessi, conferma con Invio o pulsante; il
+  fuoco resta sul tastierino, non serve toccare. In modalità "somma uno": ogni lettura aggiunge
+  una riga da 1 e mostra il totale corrente del prodotto. Codice sconosciuto: stesso flusso di
+  abbinamento di T06, poi prosegue con la quantità. Ricerca testuale sempre disponibile per
+  inserire senza barcode.
+- Riepilogo prima della chiusura: righe aggregate per prodotto (`aggregaRighe`), totale righe e
+  pezzi, per inventario un indicatore delle differenze rispetto alla giacenza teorica.
+- Chiudi sessione: stato "chiusa", upload `POST /api/sessioni`; se offline o errore, accoda in
+  `codaUpload` e mostra "in attesa di invio". Un servizio in `src/sync/coda.ts` riprova all'avvio
+  e quando torna la rete. Riapri sessione: torna "aperta" (verrà rispedita alla richiusura).
+- Condividi file dal telefono: pulsante "Condividi file" che genera il file con
+  `generaFileTerminale` e le impostazioni locali e usa `navigator.share` con un File, fallback
+  download. Serve quando il bridge non è raggiungibile.
+- Pulizia: le sessioni "importata" più vecchie di 90 giorni si possono cancellare dalla Home.
+- Test: flusso aggiungi/modifica/cancella riga, aggregazione nel riepilogo, coda upload con
+  fetch mock che fallisce poi riesce.
+
+Criteri di accettazione: un inventario di 20 letture con 3 prodotti ripetuti produce un file con
+il numero giusto di righe e le somme corrette; chiudere offline e poi riconnettersi invia la
+sessione una sola volta; nessuna quantità zero o negativa è accettata senza avviso.
+```
+
+## T08 — PWA: pagina Esportazioni e codici sconosciuti
+
+Modello: **Sonnet 5**, effort **medium**. Branch `task/08-pwa-esportazioni`.
+
+```
+Completa la pagina `/esportazioni` della PWA, pensata per essere usata dal browser del PC dove
+gira Easyfatt, e la gestione dei barcode abbinati in app.
+
+- Elenco da `GET /api/sessioni` con filtro per stato (default: chiuse ed esportate), colonne tipo,
+  nome, data chiusura, dispositivo, righe, pezzi, stato. Layout che su schermo largo diventa una
+  tabella, su telefono un elenco.
+- Per ogni sessione: "Scarica terminale.txt" (link a `/api/sessioni/:id/terminale.txt` con il
+  token passato in header tramite fetch e download via blob, non nell'URL), "Anteprima" che mostra
+  il contenuto del file in un riquadro monospazio, "Segna come importata" (PATCH), "Riporta a
+  chiusa" per rifare l'export.
+- Riquadro istruzioni per ogni tipo di sessione con il percorso esatto in Easyfatt (prendi il
+  testo da docs/PROTOCOLLI-DANEA.md sezione 1.3), richiudibile.
+- Sezione "Barcode abbinati in app": conteggio da `/api/barcode/nuovi.csv`, pulsante di download
+  del CSV, testo che spiega come riportarli in Easyfatt.
+- Sync della coda: se ci sono elementi in `codaUpload` mostra un avviso con pulsante "Invia ora".
+- Test sulle funzioni pure (formattazione nomi file, filtri).
+
+Criteri di accettazione: da Chrome desktop si scarica il file e il nome corrisponde a quello
+impostato dal bridge; il cambio stato si riflette subito nell'elenco.
+```
+
+## T09 — Deploy Cloudflare e runbook
+
+Modello: **Sonnet 5**, effort **medium**. Branch `task/09-deploy`.
+
+```
+Prepara il deploy in produzione su Cloudflare e il runbook di configurazione.
+
+- `wrangler.toml`: ambiente di produzione con nome worker `terminalinobru`, D1 di produzione
+  (id da variabile, non in chiaro se non necessario), asset dalla build della PWA.
+- Workflow `.github/workflows/deploy.yml`: su push su main, dopo i test, `pnpm -r build` e
+  `wrangler deploy` con `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` dai secret; applica le
+  migrazioni D1 remote prima del deploy.
+- `docs/RUNBOOK.md` in italiano, passo passo per il titolare: creare account Cloudflare, creare
+  il D1, impostare i secret in GitHub, primo deploy, creare il tenant con lo script di T03 e
+  conservare le credenziali, dominio personalizzato opzionale. Poi la configurazione in Easyfatt:
+  Opzioni > Moduli > Magazzino stringa formato `A,Q`; Opzioni > Moduli > E-commerce terzo sito
+  personalizzato con URL `https://<dominio>/easyfatt/catalogo` per l'aggiornamento prodotti e
+  `https://<dominio>/easyfatt/documenti` per la ricezione ordini, login e password; come lanciare
+  l'aggiornamento prodotti; come installare la PWA su Android e importare le impostazioni via QR.
+  Segnala chiaramente i punti "da verificare" di docs/PROTOCOLLI-DANEA.md come cose da provare al
+  primo collegamento.
+- Endpoint `GET /api/setup-qr` (auth app) che restituisce un PNG o SVG con il QR
+  `terminalinobru://setup?url=...&token=...`, e nota nel runbook su come usarlo una volta sola.
+
+Criteri di accettazione: il workflow di deploy è valido (usa `act` o almeno una validazione
+sintattica) e non contiene segreti; il runbook è seguibile da chi non è sviluppatore.
+```
+
+## T10 — Collaudo con Easyfatt reale
+
+Modello: **Opus 5**, effort **high**. Branch `task/10-collaudo`. Lavoro assistito: il titolare
+esegue i passi in Easyfatt e riporta gli esiti nella chat.
+
+```
+Guida il collaudo end-to-end con l'Easyfatt reale e correggi ciò che emerge. Procedi un passo alla
+volta chiedendo l'esito prima di continuare.
+
+1. Push del catalogo da Easyfatt al bridge di produzione. Se Easyfatt mostra un errore, chiedi il
+   testo esatto e i log del worker (`wrangler tail`). Verifica su /api/stato il numero di prodotti
+   e confrontalo con quello atteso; chiarisci il punto "solo prodotti spuntati per il sito".
+2. Sync sul telefono e verifica di 5 prodotti a campione, con barcode.
+3. Inventario di prova su 5 prodotti, export, import in Easyfatt come rettifica manuale su
+   un archivio di prova o con causale riconoscibile; verifica dei movimenti generati. Chiarisci
+   i punti "da verificare" sul separatore decimale, sui codici non trovati e sulla codifica.
+4. DDT di prova con import da terminale e carico di prova.
+5. Barcode sconosciuto abbinato in app, CSV, importazione in Easyfatt.
+6. Prova con la rete spenta e con un lettore Bluetooth se disponibile.
+
+Per ogni difetto: correggi in questo branch con test di regressione. Alla fine aggiorna
+docs/PROTOCOLLI-DANEA.md sostituendo ogni "da verificare" con quanto osservato e aggiungi in
+docs/DECISIONI.md le decisioni prese durante il collaudo.
+
+Criteri di accettazione: tutti e sei i passi eseguiti con esito registrato nella PR; nessun
+"da verificare" residuo senza risposta o senza motivazione.
+```
+
+## T11 — Guida utente
+
+Modello: **Sonnet 5**, effort **low**. Branch `task/11-guida`.
+
+```
+Scrivi docs/GUIDA-UTENTE.md in italiano per chi usa l'app in magazzino e per chi importa in
+Easyfatt: installazione su Android, prima configurazione via QR, sincronizzazione, le quattro
+funzioni con passi numerati e il percorso esatto in Easyfatt per ogni import, cosa fare se un
+barcode non viene riconosciuto, cosa fare senza rete, domande frequenti. Tono diretto, frasi
+brevi, niente gergo. Aggiungi screenshot solo se già presenti in repo. Aggiorna README.md con lo
+stato "in produzione" e i link.
+```
+
+## T12 — v2: DDT completi via XML (futuro)
+
+Modello: **Fable 5.1**, effort **high**. Da pianificare dopo T10. Prevede: export clienti da
+Easyfatt (Excel) caricato sul bridge, scelta cliente in app, `generaDocumentiXml` in
+`packages/easyfatt` con DocumentType D, `/easyfatt/documenti` che serve i DDT chiusi nel
+range di date richiesto, strategia di deduplica verificata sul campo, stesso meccanismo per gli
+arrivi merce (H) con fornitore.
