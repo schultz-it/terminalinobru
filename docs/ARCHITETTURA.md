@@ -68,7 +68,7 @@ con fallback single-page. Percorsi `/api/*` e `/easyfatt/*` passano sempre dal W
 
 Regole:
 
-- Ogni tabella ha `tenant_id`. In v1 esiste un solo tenant, creato da una migrazione con credenziali da secret. Nessuna UI di gestione tenant.
+- Ogni tabella ha `tenant_id`. In v1 esiste un solo tenant, creato con lo script `pnpm --filter bridge tenant:crea`, che genera le credenziali e salva solo gli hash. Nessuna UI di gestione tenant.
 - Le credenziali sono salvate come hash SHA-256; confronto a tempo costante.
 - L'upsert del catalogo lavora a blocchi con `db.batch` (D1 limita il numero di statement per chiamata). Un catalogo `full` marca come eliminati i prodotti assenti (tombstone `eliminato_il`), non li cancella.
 - Il bridge non contiene logica di dominio: valida, persiste, genera file. La logica sta in `packages/core` ed `easyfatt`.

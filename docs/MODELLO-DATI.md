@@ -174,6 +174,14 @@ Un `POST /api/sessioni` con `id` già presente sostituisce le righe (l'utente ha
 
 ## 4. Forme JSON dell'API
 
+`GET /api/stato`
+
+```json
+{ "nome": "Imballaggi Brunelli", "ultimoCatalogoIl": "2026-09-16T12:34:56Z", "prodotti": 1234 }
+```
+
+`ultimoCatalogoIl` è `null` finché Easyfatt non ha mai inviato il catalogo.
+
 `GET /api/catalogo?dal=2026-09-16T10:00:00Z`
 
 ```json
@@ -185,6 +193,10 @@ Un `POST /api/sessioni` con `id` già presente sostituisce le righe (l'utente ha
   "barcodeEliminati": ["123"]
 }
 ```
+
+`aggiornatoIl` è il cursore: la PWA lo salva e lo rispedisce tale e quale come `dal` alla chiamata
+successiva. È la data dell'ultimo invio riuscito del catalogo, non l'orologio del bridge né quello del
+telefono (vedi `DECISIONI.md` punto 26). Senza `dal` la risposta è il catalogo completo.
 
 `POST /api/sessioni`: corpo `Sessione` con `righe` incluse e `stato: "chiusa"`. Risposta `201`
 con `{ "id": "...", "ricevutaIl": "..." }`. Stessa forma per `GET /api/sessioni/:id`.
