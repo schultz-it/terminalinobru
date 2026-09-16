@@ -32,6 +32,12 @@ importers:
 
   apps/bridge:
     dependencies:
+      '@terminalinobru/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@terminalinobru/easyfatt':
+        specifier: workspace:*
+        version: link:../../packages/easyfatt
       hono:
         specifier: ^4.9.10
         version: 4.13.8

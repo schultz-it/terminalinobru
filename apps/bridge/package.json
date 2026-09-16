@@ -8,9 +8,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "build": "wrangler deploy --dry-run --outdir dist"
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "tenant:crea": "node scripts/tenant-crea.mjs"
   },
   "dependencies": {
+    "@terminalinobru/core": "workspace:*",
+    "@terminalinobru/easyfatt": "workspace:*",
     "hono": "^4.9.10"
   },
   "devDependencies": {
