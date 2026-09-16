@@ -9,7 +9,8 @@ App PWA per Android che emula un terminalino barcode e dialoga con Danea Easyfat
   I termini tecnici standard restano in inglese (handler, fetch, service worker, upsert).
 - **Prima di iniziare un task** leggi, nell'ordine: questo file, `docs/ARCHITETTURA.md`, la sezione del
   tuo task in `docs/TASK.md`. Leggi `docs/PROTOCOLLI-DANEA.md` e `docs/MODELLO-DATI.md` solo se il task li cita.
-  Non rileggere altro per risparmiare contesto.
+  Per qualsiasi lavoro sulla UI della PWA leggi anche `docs/STILE.md`: palette e componenti sono
+  vincolanti. Non rileggere altro per risparmiare contesto.
 - **Un task = un branch = una PR.** Branch `task/NN-nome-breve`, PR verso `main`, squash merge.
   Il merge lo fa la chat di revisione, non la chat che implementa.
 - **Non cambiare l'architettura** senza aggiornare `docs/DECISIONI.md` e segnalarlo nella PR.
