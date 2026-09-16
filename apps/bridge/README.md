@@ -13,6 +13,27 @@ distribuisce la PWA compilata come asset statico. Vedi `docs/ARCHITETTURA.md` se
 | GET | `/api/catalogo?dal=ISO` | Bearer | Catalogo completo o delta. |
 | GET | `/api/salute` | — | Diagnostica. |
 
+## Endpoint di questo task (T04)
+
+| Metodo | Percorso | Auth | Scopo |
+| --- | --- | --- | --- |
+| POST | `/api/sessioni` | Bearer | Upsert per `id` di una sessione chiusa con le righe. Risponde `{ id, ricevutaIl }`. |
+| GET | `/api/sessioni?stato=` | Bearer | Elenco sessioni senza righe, con conteggio e somma delle quantità. |
+| GET | `/api/sessioni/:id` | Bearer | Dettaglio con le righe in ordine. |
+| PATCH | `/api/sessioni/:id` | Bearer | Cambio stato `chiusa → esportata → importata`. `409` se non ammesso. |
+| GET | `/api/sessioni/:id/terminale.txt` | Bearer | File del terminalino generato al volo. Porta la sessione a `esportata`, salvo `?soloAnteprima=1`. |
+| POST | `/api/barcode` | Bearer | Upsert di abbinamenti barcode → prodotto con origine `app`. Non tocca chi è già di Easyfatt. |
+| GET | `/api/barcode/nuovi.csv` | Bearer | CSV degli abbinamenti con origine `app`, da riportare in Easyfatt. |
+
+Il bridge conserva solo sessioni chiuse: gli stati che gestisce sono `chiusa`, `esportata` e
+`importata`. Lo stato `aperta` dello schema di `packages/core` vive solo sul telefono; `POST
+/api/sessioni` rifiuta qualsiasi sessione che non sia `chiusa` e `PATCH` rifiuta con `409`
+qualunque transizione che porterebbe a uno stato diverso da quei tre.
+
+Rinviare una sessione già ricevuta con lo stesso `id` (riapertura e richiusura sul telefono)
+sostituisce campi e righe, mantiene `ricevuta_il` del primo invio e riporta lo stato a `chiusa`,
+azzerando `esportata_il`/`importata_il`: l'export e l'import vanno rifatti.
+
 Le risposte a Easyfatt sono sempre testo puro, mai JSON: qualsiasi corpo diverso da `OK` viene
 mostrato dentro Easyfatt come messaggio di errore, quindi è una frase in italiano.
 

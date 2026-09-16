@@ -1,4 +1,5 @@
 import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
+import type { Sessione } from '@terminalinobru/core';
 import worker from '../src/index.js';
 import { hashSha256 } from '../src/autenticazione.js';
 
@@ -75,4 +76,54 @@ export async function chiamaApi(percorso: string, token: string | null): Promise
   const intestazioni: Record<string, string> = {};
   if (token !== null) intestazioni['authorization'] = `Bearer ${token}`;
   return chiama(new Request(`http://localhost${percorso}`, { headers: intestazioni }));
+}
+
+/** Chiama una rotta `/api` con corpo JSON, il metodo indicato e il token Bearer del tenant. */
+export async function chiamaApiConCorpo(
+  metodo: 'POST' | 'PATCH',
+  percorso: string,
+  token: string | null,
+  corpo: unknown,
+): Promise<Response> {
+  const intestazioni: Record<string, string> = { 'content-type': 'application/json' };
+  if (token !== null) intestazioni['authorization'] = `Bearer ${token}`;
+  return chiama(
+    new Request(`http://localhost${percorso}`, {
+      method: metodo,
+      headers: intestazioni,
+      body: JSON.stringify(corpo),
+    }),
+  );
+}
+
+/** Sessione chiusa di prova, con due righe dello stesso prodotto da sommare all'export. */
+export function sessioneDiProva(overrides: Partial<Sessione> = {}): Sessione {
+  return {
+    id: 'sessione-1',
+    tipo: 'inventario',
+    nome: 'Scaffale A',
+    stato: 'chiusa',
+    modalita: 'chiedi_quantita',
+    creataIl: '2026-02-01T09:00:00.000Z',
+    chiusaIl: '2026-02-01T09:10:00.000Z',
+    righe: [
+      {
+        id: 'riga-1',
+        sessioneId: 'sessione-1',
+        codiceProdotto: 'ABC',
+        quantita: 2,
+        lettaIl: '2026-02-01T09:01:00.000Z',
+        ordine: 0,
+      },
+      {
+        id: 'riga-2',
+        sessioneId: 'sessione-1',
+        codiceProdotto: 'ABC',
+        quantita: 3,
+        lettaIl: '2026-02-01T09:02:00.000Z',
+        ordine: 1,
+      },
+    ],
+    ...overrides,
+  };
 }
