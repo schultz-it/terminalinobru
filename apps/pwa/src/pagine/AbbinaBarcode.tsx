@@ -1,7 +1,7 @@
 import type { Prodotto } from '@terminalinobru/core';
 import { ChevronRight, Link2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { Avviso } from '../componenti/Avviso.js';
 import { Pagina } from '../componenti/Pagina.js';
 import { TestoEvidenziato } from '../componenti/TestoEvidenziato.js';
@@ -11,11 +11,16 @@ import { useRicerca } from '../ricerca/useRicerca.js';
 import { abbinaBarcode } from '../scanner/risolvi.js';
 import { percorsoScheda } from '../scanner/useScansioneConsultazione.js';
 import { useRisolviCodice } from '../scanner/useRisolviCodice.js';
+import { avviaInvioCoda } from '../sync/coda.js';
+import type { StatoRitornoAbbinamento } from './Sessione.js';
 
 /** Flusso "Abbina a un prodotto" per un barcode letto che non è nel catalogo (ARCHITETTURA 3.6). */
 export function AbbinaBarcode() {
   const { barcode = '' } = useParams();
   const naviga = useNavigate();
+  // Arrivando da una sessione, dopo l'abbinamento si torna lì a inserire la quantità.
+  const [parametri] = useSearchParams();
+  const sessioneId = parametri.get('sessione');
   const [query, setQuery] = useState('');
   const [scelto, setScelto] = useState<Prodotto>();
   const [errore, setErrore] = useState<string>();
@@ -23,13 +28,24 @@ export function AbbinaBarcode() {
   const { risultati, pronto, totaleCatalogo } = useRicerca(query);
   const giaNoto = useRisolviCodice(barcode);
 
+  function prosegui(codiceProdotto: string) {
+    if (sessioneId) {
+      const stato: StatoRitornoAbbinamento = { abbinato: { codiceProdotto, barcode } };
+      void naviga(`/sessioni/${encodeURIComponent(sessioneId)}`, { replace: true, state: stato });
+    } else {
+      void naviga(percorsoScheda(codiceProdotto), { replace: true });
+    }
+  }
+
   async function conferma() {
     if (!scelto) return;
     setSalvataggio(true);
     setErrore(undefined);
     try {
       await abbinaBarcode(db, barcode, scelto.codice);
-      void naviga(percorsoScheda(scelto.codice), { replace: true });
+      // Se c'è rete l'abbinamento parte subito, altrimenti resta in coda.
+      void avviaInvioCoda();
+      prosegui(scelto.codice);
     } catch {
       setErrore('Abbinamento non salvato: riprova.');
       setSalvataggio(false);
@@ -37,7 +53,10 @@ export function AbbinaBarcode() {
   }
 
   return (
-    <Pagina titolo="Codice sconosciuto" indietro="/consulta">
+    <Pagina
+      titolo="Codice sconosciuto"
+      indietro={sessioneId ? `/sessioni/${encodeURIComponent(sessioneId)}` : '/consulta'}
+    >
       {errore && (
         <div className="-mx-4 -mt-4">
           <Avviso tipo="errore">{errore}</Avviso>
@@ -47,7 +66,21 @@ export function AbbinaBarcode() {
       <section className="card p-4">
         <p className="etichetta">Codice letto</p>
         <p className="font-mono text-xl font-bold break-all">{barcode}</p>
-        {giaNoto ? (
+        {giaNoto && sessioneId ? (
+          <>
+            <p className="mt-2">
+              Questo codice ora è abbinato a{' '}
+              <span className="font-titolo font-bold">{giaNoto.codice}</span>.
+            </p>
+            <button
+              type="button"
+              className="pulsante-primario mt-3 w-full"
+              onClick={() => prosegui(giaNoto.codice)}
+            >
+              Prosegui nella sessione
+            </button>
+          </>
+        ) : giaNoto ? (
           <p className="mt-2">
             Questo codice ora è abbinato a{' '}
             <Link className="font-semibold underline" to={percorsoScheda(giaNoto.codice)}>
