@@ -18,7 +18,7 @@ e test approfonditi, `low` per documentazione.
 | T02 | Libreria `core` ed `easyfatt` | Opus 5 | high | fatto | [#2](https://github.com/schultz-it/TerminalinoBru/pull/2) |
 | T03 | Bridge: schema, auth, catalogo | Opus 5 | high | fatto | [#3](https://github.com/schultz-it/TerminalinoBru/pull/3) |
 | T04 | Bridge: sessioni e barcode | Sonnet 5 | high | fatto | [#4](https://github.com/schultz-it/TerminalinoBru/pull/4) |
-| T05 | PWA: base, sync, ricerca, consultazione | Opus 5 | medium | da fare | |
+| T05 | PWA: base, sync, ricerca, consultazione | Opus 5 | medium | fatto | [#5](https://github.com/schultz-it/TerminalinoBru/pull/5) |
 | T06 | PWA: scanner | Opus 5 | high | da fare | |
 | T07 | PWA: sessioni ed export | Opus 5 | high | da fare | |
 | T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | da fare | |
