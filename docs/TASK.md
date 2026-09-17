@@ -407,30 +407,52 @@ sintattica) e non contiene segreti; il runbook è seguibile da chi non è svilup
 ## T10 — Collaudo con Easyfatt reale (dopo T14)
 
 Modello: **Opus 5**, effort **high**. Branch `task/10-collaudo`. Lavoro assistito: il titolare
-esegue i passi in Easyfatt e riporta gli esiti nella chat.
+esegue i passi in Easyfatt e sul telefono e riporta gli esiti nella chat. Leggi anche
+`docs/PROTOCOLLI-DANEA.md`, `docs/RUNBOOK.md` e `docs/DECISIONI.md` (punti 49-64).
+
+Già verificato prima di questo task: il push del catalogo da Easyfatt al bridge di produzione
+funziona (548 prodotti, solo 2 con barcode: nel campo barcode sono stati digitati i codici
+prodotto); la migrazione 0002 è applicata; il deploy avviene da Cloudflare al merge su `main`.
+Nell'installazione cloud di Easyfatt "Importa da terminale portatile" non è disponibile (ticket
+Danea aperto): inventario e carico via file restano in attesa della risposta.
 
 ```
-Guida il collaudo end-to-end con l'Easyfatt reale e correggi ciò che emerge. Procedi un passo alla
-volta chiedendo l'esito prima di continuare.
+Guida il collaudo end-to-end della v2 con l'Easyfatt reale e correggi ciò che emerge. Procedi un
+passo alla volta chiedendo l'esito prima di continuare. Non hai accesso a Easyfatt né al
+telefono: chiedi testi esatti, screenshot descritti a parole e, per il bridge, l'output di
+`pnpm --filter bridge exec wrangler tail --env produzione` che il titolare lancia dal PC.
 
-1. Push del catalogo da Easyfatt al bridge di produzione. Se Easyfatt mostra un errore, chiedi il
-   testo esatto e i log del worker (`wrangler tail`). Verifica su /api/stato il numero di prodotti
-   e confrontalo con quello atteso; chiarisci il punto "solo prodotti spuntati per il sito".
-2. Sync sul telefono e verifica di 5 prodotti a campione, con barcode.
-3. Inventario di prova su 5 prodotti, export, import in Easyfatt come rettifica manuale su
-   un archivio di prova o con causale riconoscibile; verifica dei movimenti generati. Chiarisci
-   i punti "da verificare" sul separatore decimale, sui codici non trovati e sulla codifica.
-4. DDT di prova con import da terminale e carico di prova.
-5. Barcode sconosciuto abbinato in app, CSV, importazione in Easyfatt.
-6. Prova con la rete spenta e con un lettore Bluetooth se disponibile.
+1. Clienti: export Clienti > Esporta (Excel) da Easyfatt, caricamento in Esportazioni > Clienti
+   dal PC, sincronizzazione sul telefono. Verifica il numero di clienti, gli avvisi
+   dell'anteprima e 3 clienti a campione (codice, partita IVA con zero iniziale, SDI).
+2. DDT dal telefono con un cliente esistente e 2-3 prodotti, chiusura, "Ordine n." mostrato.
+   In Easyfatt: Strumenti > Scarica ordini da e-Commerce. Verifica che l'ordine arrivi con il
+   numero giusto, il cliente abbinato per codice, le righe con descrizione e quantità; annota
+   come Easyfatt tratta il prezzo (listino del cliente o zero: decisione 55) e cosa propone come
+   intervallo di numeri al secondo scarico. Poi "Genera da > DDT" e verifica lo scarico di
+   magazzino al salvataggio. Sul telefono lo stato deve passare a "Scaricato da Easyfatt".
+3. DDT con un cliente nuovo creato sul telefono (partita IVA di un cliente che Easyfatt non ha):
+   verifica che Easyfatt crei l'anagrafica con i campi giusti (indirizzo, SDI/PEC, telefono,
+   email) e che al successivo export clienti il cliente creato in app venga sostituito da quello
+   ufficiale.
+4. Ripetizioni e casi limite: un DDT riaperto e richiuso (stesso numero), un codice prodotto
+   non presente in Easyfatt dentro un ordine, un DDT vuoto rifiutato, la cancellazione dal
+   telefono prima e dopo lo scarico (409 atteso dopo).
+5. Se Danea ha risposto sul terminalino: inventario e carico di prova via file, come nel
+   vecchio passo 3. Altrimenti prova `DocumentType` D o H sul canale e-commerce solo se il
+   titolare lo ritiene utile, su un archivio di prova; annota l'esito in PROTOCOLLI-DANEA.md.
+6. Barcode sconosciuto abbinato in app, CSV, importazione in Easyfatt; prova con la rete spenta
+   e con un lettore Bluetooth se disponibile.
 
-Per ogni difetto: correggi in questo branch con test di regressione. Alla fine aggiorna
-docs/PROTOCOLLI-DANEA.md sostituendo ogni "da verificare" con quanto osservato e aggiungi in
-docs/DECISIONI.md le decisioni prese durante il collaudo.
-
-Criteri di accettazione: tutti e sei i passi eseguiti con esito registrato nella PR; nessun
-"da verificare" residuo senza risposta o senza motivazione.
+Per ogni difetto: correggi in questo branch con test di regressione. Se una correzione richiede
+una migrazione, scrivilo in cima alla PR: va applicata in produzione prima del merge
+(docs/RUNBOOK.md sezione 4). Alla fine aggiorna docs/PROTOCOLLI-DANEA.md sostituendo ogni
+"da verificare" con quanto osservato e aggiungi in docs/DECISIONI.md le decisioni prese durante
+il collaudo.
 ```
+
+Criteri di accettazione: passi 1-4 e 6 eseguiti con esito registrato nella PR (il 5 se
+possibile); nessun "da verificare" residuo senza risposta o senza motivazione.
 
 ## T11 — Guida utente
 
