@@ -115,3 +115,6 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 
 65. **Un campo sporco nell'export clienti si scarta con un avviso, non blocca l'elenco.** Con l'export reale (1607 clienti) il bridge rifiutava tutto per 12 campi scritti a mano in Easyfatt (provincia per esteso, codice fiscale con spazi o di 15 caratteri, SDI di 6 caratteri, email incomplete, partite IVA estere con trattini). Ora `analizzaClientiTabella` toglie spazi, trattini e punti da partita IVA e codice fiscale; `ripulisciCliente` (core) toglie i campi facoltativi che non rispettano lo schema e li elenca; l'anteprima in Esportazioni mostra un avviso per ciascuno ("va corretto in Easyfatt"), così il cliente entra lo stesso con i campi buoni. Il nome resta obbligatorio. Il bridge, se riceve comunque un cliente non valido, risponde 400 dicendo codice e campo.
 
+## 2026-09-17 — Versione visibile
+
+66. **La PWA mostra versione, commit e data di build in fondo a Impostazioni.** Richiesta di Andrea dopo l'incidente del build di branch in produzione: serve capire al volo quale build ha in mano un telefono. Il numero viene dal package.json della PWA, il commit da `WORKERS_CI_COMMIT_SHA` (build di Cloudflare) o `VERSIONE_COMMIT`, altrimenti "sviluppo"; li scrive `vite.config.ts` con `define`, senza aggiungere i tipi di Node alla PWA.
