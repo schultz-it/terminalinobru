@@ -457,16 +457,51 @@ possibile); nessun "da verificare" residuo senza risposta o senza motivazione.
 
 ## T11 — Guida utente
 
-Modello: **Sonnet 5**, effort **low**. Branch `task/11-guida`.
+Modello: **Sonnet 5**, effort **low**. Branch `task/11-guida`. Leggi anche `docs/RUNBOOK.md`
+(sezioni 7-9), `docs/ARCHITETTURA.md` sezione 3, `docs/PROTOCOLLI-DANEA.md` (le voci "Collaudo
+T10") e `docs/DECISIONI.md` (punti 52-70): la guida deve descrivere la v2 come funziona oggi,
+non la v1.
 
 ```
-Scrivi docs/GUIDA-UTENTE.md in italiano per chi usa l'app in magazzino e per chi importa in
-Easyfatt: installazione su Android, prima configurazione via QR, sincronizzazione, le quattro
-funzioni con passi numerati e il percorso esatto in Easyfatt per ogni import, cosa fare se un
-barcode non viene riconosciuto, cosa fare senza rete, domande frequenti. Tono diretto, frasi
-brevi, niente gergo. Aggiungi screenshot solo se già presenti in repo. Aggiorna README.md con lo
-stato "in produzione" e i link.
+Scrivi docs/GUIDA-UTENTE.md in italiano per chi usa l'app in magazzino e per chi lavora in
+Easyfatt sul PC. Tono diretto, frasi brevi, niente gergo; passi numerati; i nomi dei pulsanti e
+delle voci di menu esattamente come compaiono nell'app e in Easyfatt (leggili nel codice della
+PWA e nel runbook). Screenshot solo se già presenti in docs/screenshot.
+
+Contenuto, in quest'ordine:
+1. Installare l'app su Android e configurarla con il QR (runbook sezione 9); dove si legge la
+   versione (in fondo a Impostazioni) e come si aggiorna l'app (riaprirla con la rete).
+2. Sincronizzare: catalogo e clienti, cosa vuol dire "Ultima sincronizzazione", cosa fare se
+   resta "Sincronizzazione…" più di un minuto.
+3. Consultare un prodotto (prezzo, giacenza, ubicazione), con fotocamera, lettore Bluetooth o
+   codice scritto a mano.
+4. DDT: nuova sessione, scelta del cliente (ricerca per nome, codice o partita IVA) o "Nuovo
+   cliente", letture e quantità, "Riepilogo e chiusura", "Chiudi e invia", il numero d'ordine
+   e gli stati ("In attesa dello scarico da Easyfatt", "Scaricato", "Importato"). Poi in
+   Easyfatt: Strumenti > Scarica ordini da e-Commerce, controllo dell'ordine (prezzo del
+   listino), "Genera da > DDT", salvataggio. Riaprire e correggere un DDT; cancellarlo (prima e
+   dopo lo scarico).
+5. Inventario e carico: sessione, chiusura, "Scarica terminale.txt" dalla pagina Esportazioni
+   sul PC, import in Easyfatt con il percorso esatto (rettifica manuale / arrivo merce, Utilità >
+   Importa da terminale portatile), cosa dice Easyfatt se un codice non esiste, "Segna come
+   importata".
+6. Clienti: quando e come rifare l'export da Easyfatt (Clienti > Esporta, Excel, senza filtri)
+   e caricarlo in Esportazioni > Clienti; cosa vogliono dire gli avvisi ("va corretto in
+   Easyfatt") e perché un cliente creato sul telefono sparisce dopo l'export.
+7. Barcode non riconosciuto: abbinarlo in app, il CSV degli abbinamenti, riportarli in
+   Easyfatt (con la nota che l'import da Excel dei barcode aggiuntivi non è ancora stato provato).
+8. Senza rete: cosa funziona (letture, sessioni, consultazione) e cosa aspetta la rete (invio,
+   cancellazione di una sessione già inviata, sincronizzazione); "Condividi file" come ripiego.
+9. Domande frequenti, comprese: "Ho premuto due volte Aggiungi", "Il DDT non compare in
+   Easyfatt", "Easyfatt dice Stringa di formato non valida", "Ho cancellato i dati del
+   telefono", "Il telefono mostra una versione diversa dal PC".
+
+Aggiorna README.md: stato "in produzione", indirizzo dell'app, link alla guida, al runbook e
+all'architettura, e la tabella dei documenti. Non toccare gli altri documenti.
 ```
+
+Criteri di accettazione: una persona che non ha mai visto l'app fa un DDT e lo porta in
+Easyfatt seguendo solo la guida; ogni nome di pulsante citato esiste davvero nell'app.
 
 ## T12 — v2 libreria: ordini XML, parametri ricezione, clienti da export
 
