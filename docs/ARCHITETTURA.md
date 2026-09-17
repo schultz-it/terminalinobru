@@ -59,7 +59,7 @@ Hono + D1. Un solo Worker che espone:
 | GET | `/api/sessioni?stato=` | Bearer | Elenco sessioni. |
 | GET | `/api/sessioni/:id` | Bearer | Dettaglio con righe. |
 | GET | `/api/sessioni/:id/terminale.txt` | Bearer | File terminalino generato al volo con la stringa formato del tenant. |
-| PATCH | `/api/sessioni/:id` | Bearer | Cambio stato: `chiusa → esportata → importata`. |
+| PATCH | `/api/sessioni/:id` | Bearer | Cambio stato: `chiusa → esportata → importata`, oppure `esportata → chiusa` per rifare l'export. |
 | POST | `/api/barcode` | Bearer | Abbinamenti barcode → prodotto creati in app (origine `app`). |
 | GET | `/api/barcode/nuovi.csv` | Bearer | Abbinamenti creati in app, da riportare in Easyfatt. |
 
