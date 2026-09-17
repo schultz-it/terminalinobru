@@ -200,6 +200,31 @@ describe('PATCH /api/sessioni/:id', () => {
     expect(risposta.status).toBe(409);
   });
 
+  it('riporta a chiusa una sessione esportata e permette di rifare l export', async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+    await chiamaApi(`/api/sessioni/${sessione.id}/terminale.txt`, tenant.token);
+
+    const risposta = await chiamaApiConCorpo(
+      'PATCH',
+      `/api/sessioni/${sessione.id}`,
+      tenant.token,
+      { stato: 'chiusa' },
+    );
+    expect(risposta.status).toBe(200);
+    const corpo = (await risposta.json()) as { stato: string; esportataIl?: string };
+    expect(corpo.stato).toBe('chiusa');
+    expect(corpo.esportataIl).toBeUndefined();
+
+    await chiamaApi(`/api/sessioni/${sessione.id}/terminale.txt`, tenant.token);
+    const riesportata = (await (
+      await chiamaApi(`/api/sessioni/${sessione.id}`, tenant.token)
+    ).json()) as { stato: string; esportataIl?: string };
+    expect(riesportata.stato).toBe('esportata');
+    expect(riesportata.esportataIl).toBeDefined();
+  });
+
   it('rifiuta uno stato non gestito dal bridge con 409', async () => {
     const tenant = await creaTenant();
     const sessione = sessioneDiProva();
@@ -224,6 +249,25 @@ describe('PATCH /api/sessioni/:id', () => {
 });
 
 describe('isolamento fra tenant', () => {
+  it('non lascia sovrascrivere una sessione di un altro tenant con lo stesso id', async () => {
+    const primo = await creaTenant(1);
+    const secondo = await creaTenant(2);
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', primo.token, sessione);
+
+    const intrusione = await chiamaApiConCorpo('POST', '/api/sessioni', secondo.token, {
+      ...sessione,
+      nome: 'Sostituita',
+    });
+    expect(intrusione.status).toBe(409);
+
+    const originale = (await (
+      await chiamaApi(`/api/sessioni/${sessione.id}`, primo.token)
+    ).json()) as { nome: string; righe: unknown[] };
+    expect(originale.nome).toBe('Scaffale A');
+    expect(originale.righe).toHaveLength(2);
+  });
+
   it('non mostra le sessioni di un altro tenant', async () => {
     const primo = await creaTenant(1);
     const secondo = await creaTenant(2);

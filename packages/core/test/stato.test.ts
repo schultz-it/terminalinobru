@@ -12,6 +12,10 @@ describe('transizioneStato', () => {
     expect(transizioneStato('chiusa', 'aperta')).toBe(true);
   });
 
+  it('ammette di riportare a chiusa una sessione esportata, per rifare l export', () => {
+    expect(transizioneStato('esportata', 'chiusa')).toBe(true);
+  });
+
   it('vieta di riaprire una sessione già esportata o importata', () => {
     expect(transizioneStato('esportata', 'aperta')).toBe(false);
     expect(transizioneStato('importata', 'aperta')).toBe(false);

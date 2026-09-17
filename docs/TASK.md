@@ -338,7 +338,7 @@ gira Easyfatt, e la gestione dei barcode abbinati in app.
 - Per ogni sessione: "Scarica terminale.txt" (link a `/api/sessioni/:id/terminale.txt` con il
   token passato in header tramite fetch e download via blob, non nell'URL), "Anteprima" che mostra
   il contenuto del file in un riquadro monospazio, "Segna come importata" (PATCH), "Riporta a
-  chiusa" per rifare l'export.
+  chiusa" per rifare l'export (PATCH con stato "chiusa").
 - Riquadro istruzioni per ogni tipo di sessione con il percorso esatto in Easyfatt (prendi il
   testo da docs/PROTOCOLLI-DANEA.md sezione 1.3), richiudibile.
 - Sezione "Barcode abbinati in app": conteggio da `/api/barcode/nuovi.csv`, pulsante di download

@@ -82,7 +82,7 @@ Funzioni pure in `core`:
 - `aggregaRighe(righe): {codice, quantita}[]` somma per prodotto, ordine di prima comparsa.
 - `normalizza(testo)`: minuscolo, senza accenti, spazi compressi.
 - `cercaProdotti(indice, query, limite)`: token AND su codice e descrizione, prefisso di codice prima.
-- `transizioneStato(da, a)`: valida `aperta → chiusa → esportata → importata`; `chiusa → aperta` ammessa per riaprire.
+- `transizioneStato(da, a)`: valida `aperta → chiusa → esportata → importata`; `chiusa → aperta` ammessa per riaprire sul telefono, `esportata → chiusa` per rifare l'export dal bridge.
 - `rilevaInputLettore(eventi)`: raffica di tasti sotto soglia di tempo terminata da Invio.
 
 ## 2. Schema D1 (`apps/bridge/migrations`)

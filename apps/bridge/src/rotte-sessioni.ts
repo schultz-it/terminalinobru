@@ -7,6 +7,7 @@ import type { SessioneDaSalvare } from './sessioni-db.js';
 import {
   elencoSessioni,
   impostaStato,
+  proprietarioSessione,
   recuperaSessioneBase,
   recuperaSessioneConRighe,
   upsertSessione,
@@ -81,6 +82,11 @@ rotteSessioni.post('/', async (c) => {
   };
 
   const tenant = c.get('tenant');
+  // L'id è generato sul telefono ed è chiave globale: un altro tenant non può sovrascriverlo.
+  const proprietario = await proprietarioSessione(c.env.DB, sessione.id);
+  if (proprietario !== null && proprietario !== tenant.id) {
+    return c.json({ errore: 'Id di sessione già in uso.' }, 409);
+  }
   const ricevutaIl = await upsertSessione(c.env.DB, tenant.id, daSalvare, new Date().toISOString());
   return c.json({ id: sessione.id, ricevutaIl }, 201);
 });
@@ -139,7 +145,10 @@ rotteSessioni.get('/:id/terminale.txt', async (c) => {
   });
 });
 
-/** Cambia lo stato di una sessione: `chiusa → esportata → importata`. */
+/**
+ * Cambia lo stato di una sessione: `chiusa → esportata → importata`, oppure `esportata → chiusa`
+ * per rifare l'export. Lo stato `aperta` vive solo sul telefono.
+ */
 rotteSessioni.patch('/:id', async (c) => {
   const tenant = c.get('tenant');
   const id = c.req.param('id');
@@ -161,7 +170,7 @@ rotteSessioni.patch('/:id', async (c) => {
   const attuale = await recuperaSessioneBase(c.env.DB, tenant.id, id);
   if (attuale === null) return c.json({ errore: 'Sessione non trovata.' }, 404);
 
-  if (nuovoStato !== 'esportata' && nuovoStato !== 'importata') {
+  if (nuovoStato !== 'esportata' && nuovoStato !== 'importata' && nuovoStato !== 'chiusa') {
     return c.json(
       { errore: `Lo stato «${nuovoStato}» non è gestito dal bridge per questa sessione.` },
       409,

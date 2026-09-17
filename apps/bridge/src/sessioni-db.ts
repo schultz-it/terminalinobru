@@ -227,6 +227,15 @@ export async function elencoSessioni(
   }));
 }
 
+/** Tenant a cui appartiene una sessione, o `null` se l'id non esiste. */
+export async function proprietarioSessione(db: D1Database, id: string): Promise<string | null> {
+  const riga = await db
+    .prepare('SELECT tenant_id FROM sessione WHERE id = ?1')
+    .bind(id)
+    .first<{ tenant_id: string }>();
+  return riga === null ? null : riga.tenant_id;
+}
+
 /** Sessione del tenant senza righe, o `null` se non esiste o è di un altro tenant. */
 export async function recuperaSessioneBase(
   db: D1Database,
@@ -255,22 +264,32 @@ export async function recuperaSessioneConRighe(
   return { ...base, righe: righe.results.map(rigaARiga) };
 }
 
-/** Imposta lo stato della sessione e la data di esportazione o importazione. */
+/**
+ * Imposta lo stato della sessione. Verso `esportata` o `importata` scrive la data relativa;
+ * verso `chiusa` (rifare l'export) azzera le date di esportazione e importazione.
+ */
 export async function impostaStato(
   db: D1Database,
   tenantId: string,
   id: string,
-  nuovoStato: 'esportata' | 'importata',
+  nuovoStato: 'esportata' | 'importata' | 'chiusa',
   adesso: string,
 ): Promise<SessioneSommario | null> {
-  const colonnaData = nuovoStato === 'esportata' ? 'esportata_il' : 'importata_il';
+  const assegnazione =
+    nuovoStato === 'chiusa'
+      ? 'esportata_il = NULL, importata_il = NULL'
+      : `${nuovoStato === 'esportata' ? 'esportata_il' : 'importata_il'} = ?4`;
   const riga = await db
     .prepare(
-      `UPDATE sessione SET stato = ?3, ${colonnaData} = ?4
+      `UPDATE sessione SET stato = ?3, ${assegnazione}
        WHERE id = ?1 AND tenant_id = ?2
        RETURNING ${COLONNE_SESSIONE}`,
     )
-    .bind(id, tenantId, nuovoStato, adesso)
+    .bind(
+      ...(nuovoStato === 'chiusa'
+        ? [id, tenantId, nuovoStato]
+        : [id, tenantId, nuovoStato, adesso]),
+    )
     .first<RigaSessioneDb>();
   return riga === null ? null : rigaASommario(riga);
 }
