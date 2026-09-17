@@ -17,6 +17,7 @@ import {
   righeDiSessioni,
   sessioniDdtCandidate,
   statementSegnaEsportate,
+  statementSegnaImportate,
   statementSegnaImportatePrimaDi,
 } from './ricezione-db.js';
 
@@ -98,8 +99,9 @@ rotteEasyfatt.post('/catalogo', async (c) => {
 /**
  * Polling dei documenti (v2): risponde con le sessioni ddt del tenant come ordini cliente,
  * filtrate su `firstnum`/`lastnum`/`firstdate`/`lastdate`. La prima consegna segna la sessione
- * `esportata`; le sessioni con numero minore di `firstnum` ancora `esportata` passano a
- * `importata` (docs/DECISIONI.md punto 53).
+ * `esportata`, la seconda `importata` (Easyfatt chiede sempre `firstnum=1`, docs/DECISIONI.md
+ * punto 67); le sessioni con numero minore di `firstnum` ancora `esportata` passano a
+ * `importata` (punto 53).
  */
 rotteEasyfatt.get('/documenti', async (c) => {
   const tenant = c.get('tenant');
@@ -178,8 +180,12 @@ rotteEasyfatt.get('/documenti', async (c) => {
 
   const adesso = new Date().toISOString();
   const daEsportare = consegnabili.filter((riga) => riga.stato === 'chiusa').map((riga) => riga.id);
+  const giaConsegnate = consegnabili
+    .filter((riga) => riga.stato === 'esportata')
+    .map((riga) => riga.id);
   const statement = [
     ...statementSegnaEsportate(c.env.DB, daEsportare, adesso),
+    ...statementSegnaImportate(c.env.DB, giaConsegnate, adesso),
     ...(parametri.firstnum === undefined
       ? []
       : [statementSegnaImportatePrimaDi(c.env.DB, tenant.id, parametri.firstnum, adesso)]),

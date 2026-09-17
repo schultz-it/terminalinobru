@@ -67,6 +67,37 @@ describe('GET /easyfatt/documenti (v2)', () => {
     },
   );
 
+  // Collaudo T10: Easyfatt chiede sempre firstnum=1 e l'anno intero, a ogni scarico.
+  it('al secondo scarico con firstnum=1 segna importata ciò che era già stato consegnato, e lo rimanda', async () => {
+    const tenant = await creaTenant();
+    const parametriReali = '?appver=2&firstdate=2000-01-01&lastdate=2999-12-31&firstnum=1';
+    await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDdtDiProva({ id: 'ddt-1' }),
+    );
+
+    await documenti(tenant, parametriReali);
+    expect(await statoSessione(tenant, 'ddt-1')).toBe('esportata');
+
+    await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDdtDiProva({ id: 'ddt-2', nome: 'Ordine 2' }),
+    );
+    const seconda = await (await documenti(tenant, parametriReali)).text();
+    // Entrambi nella risposta: Easyfatt deduplica sul numero e riprende un import annullato.
+    expect((seconda.match(/<Document>/g) ?? []).length).toBe(2);
+    expect(await statoSessione(tenant, 'ddt-1')).toBe('importata');
+    expect(await statoSessione(tenant, 'ddt-2')).toBe('esportata');
+
+    await documenti(tenant, parametriReali);
+    expect(await statoSessione(tenant, 'ddt-1')).toBe('importata');
+    expect(await statoSessione(tenant, 'ddt-2')).toBe('importata');
+  });
+
   it('risponde un EasyfattDocuments vuoto senza sessioni ddt', async () => {
     const tenant = await creaTenant();
     const risposta = await documenti(tenant);
