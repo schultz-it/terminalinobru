@@ -13,8 +13,8 @@ più come file del terminalino.
 3. Apri l'app appena installata, vai in **Impostazioni** e premi **"Importa da QR"**.
 4. Fatti mostrare sul PC il QR generato al momento della configurazione (file `.svg`, lo tiene chi
    ha creato l'utenza) e inquadralo: indirizzo del bridge e token vengono compilati da soli.
-5. Premi **"Verifica connessione"**: deve mostrare nome del negozio, data dell'ultimo catalogo e
-   numero di prodotti.
+5. Premi **"Verifica connessione"**: deve mostrare "Connessione riuscita" con azienda, data
+   dell'ultimo catalogo e numero di prodotti.
 6. Premi **"Sincronizza catalogo e clienti"** per scaricare prodotti e clienti sul telefono.
 
 **Dove si legge la versione**: in fondo a **Impostazioni** c'è una riga tipo "Versione 0.1.0 ·
@@ -46,16 +46,18 @@ la ricerca cliente nel DDT resta vuota, ma **"Nuovo cliente"** funziona comunque
 
 Per vedere prezzo, giacenza e ubicazione di un prodotto, senza aprire nessuna sessione:
 
-1. Dalla Home premi **"Consulta prodotto"**.
+1. Dalla Home premi **"Consulta prodotto"**: si apre la pagina **Consulta**.
 2. Trova il prodotto in uno di questi tre modi:
-   - **Fotocamera**: apri lo scanner e inquadra il barcode.
+   - **Fotocamera**: premi il pulsante giallo con l'icona del barcode accanto al campo di ricerca
+     (si chiama "Scansiona") e inquadra il barcode.
    - **Lettore Bluetooth**: con il lettore collegato al telefono come tastiera, basta leggere il
      codice mentre lo scanner è aperto: viene riconosciuto da solo, senza toccare nulla.
-   - **Codice scritto a mano**: nello scanner c'è un campo di testo con pulsante "Cerca", oppure
-     usa direttamente la ricerca per codice o descrizione.
-3. Nella scheda prodotto trovi: descrizione, codice, prezzo del listino scelto (netto e lordo),
-   giacenza con la data di aggiornamento, ordinato, scorta minima, ubicazione, categoria, i barcode
-   collegati e le note.
+   - **Codice scritto a mano**: nello scanner c'è il campo "Scrivi il codice" con il pulsante
+     **"Cerca"**, oppure scrivi direttamente nel campo "Codice o descrizione" della pagina e tocca
+     il prodotto nell'elenco.
+3. Nella scheda prodotto trovi: descrizione, codice, "Prezzo listino" (netto e lordo) del listino
+   scelto in Impostazioni, giacenza con la data di aggiornamento, ordinato, scorta minima,
+   ubicazione, categoria, i "Barcode associati" e le note.
 
 Se il codice letto non è riconosciuto, l'app apre **"Codice sconosciuto"**: vedi la sezione 7.
 
@@ -70,10 +72,12 @@ Se il codice letto non è riconosciuto, l'app apre **"Codice sconosciuto"**: ved
    cliente"** e compila ragione sociale (obbligatoria), partita IVA, codice fiscale, indirizzo,
    CAP, città, provincia, codice destinatario SDI, telefono ed email. Questo cliente viaggia dentro
    la sessione: non serve che sia già in Easyfatt.
-3. Dai un nome alla sessione (proposto in automatico) e, se vuoi, delle note, poi premi **"Inizia
-   sessione"**.
-4. Leggi i prodotti con la fotocamera, il lettore Bluetooth o la ricerca; a ogni lettura inserisci
-   la quantità (o conferma "somma uno", secondo la modalità scelta).
+3. Dai un nome alla sessione (proposto in automatico), se vuoi delle note, e scegli la
+   **"Modalità di scansione"**: **"Chiedi quantità"** (a ogni lettura digiti i pezzi) oppure
+   **"Somma uno"** (ogni lettura aggiunge un pezzo). Poi premi **"Inizia sessione"**.
+4. Leggi i prodotti con la fotocamera, il lettore Bluetooth o la ricerca; con "Chiedi quantità"
+   digita i pezzi e premi **"Aggiungi"**. Per correggere una riga tocca la matita accanto alla
+   riga, cambia la quantità e premi **"Salva"**.
 5. Quando hai finito, premi **"Riepilogo e chiusura"**: vedi le righe aggregate per prodotto e il
    totale.
 6. Premi **"Chiudi e invia"**: la sessione parte verso il bridge. Se il telefono è offline, resta
@@ -102,9 +106,12 @@ Dopo il primo scarico la sessione sul telefono passa a "Scaricato da Easyfatt"; 
 
 ### Correggere o cancellare un DDT
 
-- **Riaprire e correggere**: sul telefono, dalla sessione, **"Riapri sessione"**; correggi le
-  righe e richiudi con **"Chiudi e invia"**: lo stesso numero d'ordine viene rispedito, Easyfatt lo
-  sostituisce senza doppioni.
+- **Riaprire e correggere**: si può solo finché lo stato è "In attesa dello scarico da Easyfatt".
+  Sul telefono, dalla sessione, **"Riapri sessione"**; correggi le righe e richiudi con **"Chiudi e
+  invia"**: la sessione riparte con lo stesso numero d'ordine. Attenzione: Easyfatt scarta un
+  numero che ha già ricevuto, quindi se nel frattempo qualcuno ha già premuto "Scarica ordini da
+  e-Commerce" sul PC la correzione non arriva. Dopo lo scarico il pulsante "Riapri sessione" non
+  compare più: correggi l'ordine o il DDT direttamente in Easyfatt.
 - **Cancellare prima dello scarico**: **"Cancella sessione"** funziona finché Easyfatt non ha
   ancora scaricato l'ordine (stato "In attesa dello scarico da Easyfatt").
 - **Cancellare dopo lo scarico**: se lo hai già scaricato in Easyfatt (stato "Scaricato da
@@ -125,10 +132,13 @@ per scaricare il file (puoi controllarne il contenuto con **"Anteprima"** prima 
 
 In Easyfatt:
 
-- **Inventario** → Magazzino > Movimenti > Rettifica > Rettifica manuale > Utilità > Importa da
-  terminale portatile, scegli il file appena scaricato. Causale predefinita "Rettifica giacenza".
-  Se l'inventario è completo, spunta anche "Azzera giacenza dei prodotti non in elenco".
-- **Carico** → Nuovo Arrivo merce > Utilità > Importa da terminale portatile.
+- **Inventario** → Magazzino > Movimenti > Rettifica > Rettifica manuale > Importa da terminale
+  portatile, scegli il file appena scaricato. Causale predefinita "Rettifica giacenza". Se
+  l'inventario è completo, usa anche "Azzera giacenza dei prodotti non in elenco". Easyfatt calcola
+  da solo la differenza con la giacenza attuale.
+- **Carico** → Nuovo Arrivo merce > Utilità > Importa da terminale portatile. Questo percorso non è
+  ancora stato provato con un file dell'app (il collaudo ha coperto solo la rettifica manuale): alla
+  prima volta controlla le righe prima di salvare.
 
 Se un codice del file non esiste in archivio, Easyfatt non blocca l'import: scarta solo quella riga
 e riepiloga qualcosa come "2 voci inserite, 1 voci non importate: riga 3 codice a barre
@@ -146,13 +156,14 @@ volta che serve un aggiornamento (nuovi clienti, indirizzi o partite IVA cambiat
 1. In Easyfatt: **Clienti > Esporta**, formato Excel, **senza filtri** (l'intero elenco).
 2. Sul PC, apri l'app nel browser, vai in **Esportazioni**, sezione **"Clienti"**, e premi
    **"Scegli il file dei clienti"**: seleziona il file appena esportato.
-3. L'app mostra un'anteprima con il numero di clienti letti e gli eventuali avvisi, poi conferma il
-   caricamento.
+3. L'app mostra un'anteprima con il numero di clienti letti e gli eventuali avvisi; premi
+   **"Conferma e carica sul bridge"**. I telefoni ricevono i clienti nuovi alla sincronizzazione
+   successiva.
 
 **Gli avvisi**: un avviso del tipo "Cliente ... campo ... non caricato. ... Va corretto in
 Easyfatt." significa che quel singolo campo (per esempio una provincia scritta per esteso o
 un'email incompleta) non rispetta il formato atteso e non è stato caricato: il resto del cliente
-entra comunque. Corregge il campo direttamente in Easyfatt e rifai l'export quando ti è comodo; non
+entra comunque. Correggi il campo direttamente in Easyfatt e rifai l'export quando ti è comodo; non
 è urgente, non blocca l'uso dell'app.
 
 **Perché un cliente creato sul telefono sparisce dopo l'export**: se hai creato un cliente nuovo
@@ -194,15 +205,21 @@ Quasi tutto funziona anche offline:
 L'indicatore in alto mostra **"Online"** o **"Offline"**.
 
 Se il bridge non è raggiungibile e serve comunque portare i dati sul PC, usa **"Condividi file"**
-nella schermata della sessione: genera il file del terminalino e lo condivide (o lo scarica) senza
+nella schermata della sessione chiusa: genera il file del terminalino e lo condivide (o lo scarica) senza
 passare dal bridge.
 
 ## 9. Domande frequenti
 
+**Ho premuto due volte "Aggiungi".**
+Il secondo tocco viene ignorato finché il primo non è salvato, quindi di norma non succede nulla.
+Se la stessa etichetta è stata letta due volte, la riga compare due volte nella sessione ma nel
+riepilogo le quantità dello stesso prodotto si sommano: tocca la matita accanto alla riga di
+troppo, metti la quantità giusta (anche zero, confermando due volte) e premi "Salva".
+
 **Ho premuto due volte "Inizia sessione" (o "Chiudi e invia").**
-Non crea doppioni: l'invio della stessa sessione è un aggiornamento (stesso id), non una copia. Se
-hai il dubbio, controlla in **Esportazioni** che ci sia una sola riga per quella sessione, con un
-solo numero d'ordine.
+Non crea doppioni: il pulsante resta bloccato mentre lavora, e il rinvio della stessa sessione è un
+aggiornamento (stesso id e stesso numero d'ordine), non una copia. Se hai il dubbio, controlla in
+**Esportazioni** che ci sia una sola riga per quella sessione.
 
 **Il DDT non compare in Easyfatt dopo "Strumenti > Scarica ordini da e-Commerce".**
 Verifica prima lo stato sul telefono: deve essere almeno "In attesa dello scarico da Easyfatt" (cioè
