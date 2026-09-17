@@ -169,7 +169,7 @@ Un `POST /api/sessioni` con `id` già presente sostituisce le righe (l'utente ha
 | `barcode` | `barcode` | `codiceProdotto` | Include abbinamenti locali con `origine: 'app'`. |
 | `sessioni` | `id` | `stato`, `creataIl` | Tutte le sessioni, anche chiuse, finché non si fa pulizia. |
 | `righe` | `id` | `sessioneId`, `[sessioneId+ordine]` | |
-| `codaUpload` | `++id` | `tipo` | Sessioni e barcode da inviare al bridge quando torna la rete. Voce: `{ tipo, riferimento, creataIl, tentativi, ultimoErrore? }`. |
+| `codaUpload` | `++id` | `tipo` | Sessioni e barcode da inviare al bridge quando torna la rete. Voce: `{ tipo, riferimento, creataIl, tentativi, ultimoErrore? }`; `riferimento` è l'id della sessione o il barcode abbinato (una voce per barcode, il corpo si legge dallo store `barcode` al momento dell'invio). |
 | `impostazioni` | `chiave` | | Coppie chiave/valore: i campi di `Impostazioni` più `cursoreCatalogo`, l'`aggiornatoIl` dell'ultima risposta di `/api/catalogo`. |
 
 ## 4. Forme JSON dell'API

@@ -6,6 +6,7 @@ import { db } from '../db.js';
 import { formattaDataOra, formattaNumero, formattaPrezzo } from '../formato.js';
 import { useImpostazioni } from '../hooks/useImpostazioni.js';
 import { useLiveQuery } from '../hooks/useLiveQuery.js';
+import { useScansioneConsultazione } from '../scanner/useScansioneConsultazione.js';
 
 function Voce({ etichetta, children }: { etichetta: string; children: ReactNode }) {
   return (
@@ -26,23 +27,25 @@ export function SchedaProdotto() {
     [codice],
   );
   const listino = impostazioni?.listinoMostrato ?? 1;
+  const scansione = useScansioneConsultazione();
 
   return (
     <Pagina
       titolo="Scheda prodotto"
       indietro="/consulta"
       azione={
-        // Punto di aggancio per T06: scansione di un altro prodotto direttamente dalla scheda.
+        // Scansione di un altro prodotto direttamente dalla scheda.
         <button
           type="button"
-          disabled
-          aria-label="Scansiona (disponibile a breve)"
-          className="flex size-12 items-center justify-center rounded-full opacity-50"
+          aria-label="Scansiona un altro prodotto"
+          className="flex size-12 items-center justify-center rounded-full active:bg-giallo-scuro"
+          onClick={scansione.apri}
         >
           <ScanBarcode size={28} strokeWidth={2} />
         </button>
       }
     >
+      {scansione.scanner}
       {prodotto === null && (
         <div className="card p-4">
           <p className="font-semibold">

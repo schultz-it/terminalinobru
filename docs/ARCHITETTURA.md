@@ -81,9 +81,9 @@ Vite + React + TypeScript + Tailwind. Installabile su Android da Chrome. Offline
 - **Sync catalogo** manuale dalla schermata Impostazioni e automatica all'avvio se online e passate più di 6 ore. Delta tramite `dal`.
 - **Upload sessioni** quando l'utente chiude una sessione; se offline resta in coda e riprova alla prossima apertura.
 - **Ricerca** in memoria su indice costruito dai prodotti in Dexie: normalizzazione senza accenti e maiuscole, match per token su codice e descrizione, priorità ai prefissi di codice. Il catalogo atteso è di poche migliaia di righe, non serve un motore esterno.
-- **Scanner**: componente unico che accetta input da tre sorgenti e le espone come evento `codiceLetto`:
+- **Scanner**: componente unico che accetta input da tre sorgenti e le espone tramite `onCodice(codice, sorgente)`; chi riceve restituisce l'esito (`trovato`, `sconosciuto`, `ignorato`) e lo scanner sceglie il feedback:
   1. fotocamera tramite `BarcodeDetector`, con polyfill `barcode-detector` dove l'API nativa manca;
-  2. lettore Bluetooth o USB in modalità tastiera: listener globale che riconosce raffiche di tasti terminate da Invio;
+  2. lettore Bluetooth o USB in modalità tastiera: listener sul documento, attivo mentre lo scanner è montato, che riconosce raffiche di tasti terminate da Invio;
   3. digitazione manuale del codice.
   Ogni lettura dà feedback sonoro e vibrazione, con suono diverso per codice sconosciuto.
 - **Schermate**: Home (sessioni aperte, nuova sessione, consultazione), Sessione (scanner, riga corrente, elenco righe, chiudi), Consultazione (scanner + ricerca, scheda prodotto con prezzi, giacenza, ubicazione), Esportazioni (elenco sessioni chiuse con download del file e cambio stato, pensata per il browser del PC), Impostazioni (URL bridge, token, stringa formato, listino da mostrare, modalità scansione predefinita, suoni).

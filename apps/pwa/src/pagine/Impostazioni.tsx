@@ -14,6 +14,9 @@ import {
   type ErroriImpostazioni,
 } from '../impostazioni.js';
 import logo from '../risorse/logo-imballare-net.png';
+import { preparaAudio } from '../scanner/feedback.js';
+import { Scanner } from '../scanner/Scanner.js';
+import type { EsitoLettura } from '../scanner/tipi.js';
 import { avviaSincronizzazione, useStatoSync } from '../sync/statoSync.js';
 
 /** Numero con il sostantivo al singolare o al plurale. */
@@ -95,8 +98,7 @@ export function Impostazioni() {
   const [verifica, setVerifica] = useState<
     { stato: 'in-corso' } | { stato: 'ok'; dati: StatoBridge } | { stato: 'errore'; testo: string }
   >();
-  const [setupAperto, setSetupAperto] = useState(false);
-  const [testoSetup, setTestoSetup] = useState('');
+  const [scannerSetup, setScannerSetup] = useState(false);
   const [erroreSetup, setErroreSetup] = useState<string>();
   const [attesaSync, setAttesaSync] = useState(false);
 
@@ -183,23 +185,25 @@ export function Impostazioni() {
     await avviaSincronizzazione();
   }
 
-  async function applicaSetup() {
-    const esito = analizzaTestoSetup(testoSetup);
+  /** Codice letto dallo scanner del QR di setup: se valido salva la connessione e chiude. */
+  async function applicaSetup(testo: string): Promise<EsitoLettura> {
+    const esito = analizzaTestoSetup(testo);
     if (!esito.ok) {
       setErroreSetup(esito.errore);
-      return;
+      return 'sconosciuto';
     }
     try {
       await salva(esito.dati);
       setBozza((attuale) => (attuale ? { ...attuale, ...esito.dati } : attuale));
       setErrori({});
-      setSetupAperto(false);
-      setTestoSetup('');
+      setScannerSetup(false);
       setErroreSetup(undefined);
       setVerifica(undefined);
       setMessaggio({ tipo: 'conferma', testo: 'Connessione importata e salvata.' });
+      return 'trovato';
     } catch {
       setErroreSetup('Salvataggio non riuscito: riprova.');
+      return 'sconosciuto';
     }
   }
 
@@ -276,10 +280,10 @@ export function Impostazioni() {
             type="button"
             className="pulsante-secondario"
             onClick={() => {
-              setSetupAperto((aperto) => !aperto);
+              preparaAudio();
               setErroreSetup(undefined);
+              setScannerSetup(true);
             }}
-            aria-expanded={setupAperto}
           >
             <QrCode size={20} />
             Importa da QR
@@ -316,34 +320,17 @@ export function Impostazioni() {
           </p>
         )}
 
-        {setupAperto && (
-          <div className="flex flex-col gap-2 rounded-[10px] bg-giallo-chiaro p-3">
-            {/* Punto di aggancio per T06: qui si aprirà lo scanner per leggere il QR. */}
-            <Campo
-              etichetta="Testo del QR di setup"
-              errore={erroreSetup}
-              aiuto="In attesa dello scanner, incolla il testo che inizia con terminalinobru://setup"
-            >
-              {(id, descrizione) => (
-                <textarea
-                  id={id}
-                  aria-describedby={descrizione}
-                  rows={3}
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  className="campo py-2 font-mono text-sm"
-                  value={testoSetup}
-                  onChange={(e) => {
-                    setTestoSetup(e.target.value);
-                    setErroreSetup(undefined);
-                  }}
-                />
-              )}
-            </Campo>
-            <button type="button" className="pulsante-primario" onClick={() => void applicaSetup()}>
-              Applica
-            </button>
-          </div>
+        {scannerSetup && (
+          <Scanner
+            titolo="QR di setup"
+            segnapostoManuale="Oppure incolla il testo terminalinobru://setup…"
+            avviso={erroreSetup ? { tipo: 'errore', testo: erroreSetup } : undefined}
+            onCodice={applicaSetup}
+            onChiudi={() => {
+              setScannerSetup(false);
+              setErroreSetup(undefined);
+            }}
+          />
         )}
       </section>
 

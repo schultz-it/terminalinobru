@@ -4,15 +4,18 @@ import { Pagina } from '../componenti/Pagina.js';
 import { TestoEvidenziato } from '../componenti/TestoEvidenziato.js';
 import { LIMITE_RISULTATI } from '../ricerca/indice.js';
 import { useRicerca } from '../ricerca/useRicerca.js';
+import { useScansioneConsultazione } from '../scanner/useScansioneConsultazione.js';
 
 export function Consultazione() {
   // La query sta nell'indirizzo: tornando indietro dalla scheda la ricerca è ancora lì.
   const [parametri, setParametri] = useSearchParams();
   const query = parametri.get('q') ?? '';
   const { risultati, pronto, totaleCatalogo } = useRicerca(query);
+  const scansione = useScansioneConsultazione();
 
   return (
     <Pagina titolo="Consulta">
+      {scansione.scanner}
       <div className="flex gap-2">
         <label className="sr-only" htmlFor="ricerca">
           Cerca per codice o descrizione
@@ -35,13 +38,12 @@ export function Consultazione() {
             })
           }
         />
-        {/* Punto di aggancio per T06: il pulsante aprirà lo scanner. */}
         <button
           type="button"
-          disabled
-          aria-label="Scansiona (disponibile a breve)"
-          title="Scansione disponibile a breve"
-          className="pulsante-secondario w-12 shrink-0 px-0"
+          aria-label="Scansiona"
+          title="Scansiona"
+          className="pulsante-primario w-12 shrink-0 px-0"
+          onClick={scansione.apri}
         >
           <ScanBarcode size={24} strokeWidth={2} />
         </button>
