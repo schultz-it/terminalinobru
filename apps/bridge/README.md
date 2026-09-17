@@ -49,7 +49,7 @@ prefisso `Basic`.
 | POST | `/api/clienti/importa` | Bearer | Sostituisce l'elenco clienti (JSON `{ clienti: Cliente[] }`, già interpretato dalla PWA dall'export Easyfatt): upsert a blocchi e tombstone per gli assenti, come il catalogo `full`. Risponde `{ importati, eliminati }`. Max 2 MB, max 5000 clienti. |
 | GET | `/api/clienti?dal=ISO` | Bearer | Clienti modificati dopo `dal`, più i codici eliminati; senza `dal` tutti. Stesso cursore del catalogo (`ultimo_clienti_il`). |
 | DELETE | `/api/sessioni/:id` | Bearer | Cancella sessione e righe. `204`. `409` se `esportata` o `importata` (Easyfatt l'ha già scaricata): non si può più far sparire da sotto. `404` se non esiste. |
-| GET | `/easyfatt/documenti` | Basic | Polling ordini: risponde con le sessioni `ddt` del tenant come ordini cliente (`DocumentType` C), filtrate su `firstnum`/`lastnum`/`firstdate`/`lastdate`. La prima consegna segna la sessione `esportata`; le sessioni con numero minore di `firstnum` ancora `esportata` passano a `importata` (docs/DECISIONI.md punto 53). |
+| GET | `/easyfatt/documenti` | Basic | Polling ordini: risponde con le sessioni `ddt` del tenant come ordini cliente (`DocumentType` C), filtrate su `firstnum`/`lastnum`/`firstdate`/`lastdate`. La prima consegna segna la sessione `esportata`; la seconda (Easyfatt chiede sempre `firstnum=1` e deduplica da sé) la segna `importata` e la rimanda comunque (decisione 68); le sessioni con numero minore di `firstnum` ancora `esportata` passano a `importata` (decisione 53). |
 
 `POST /api/sessioni` accetta ora anche `cliente` (obbligatorio per i `ddt`, validato con lo schema
 di core): alla prima ricezione di un ddt il bridge gli assegna un `numeroDocumento` progressivo per

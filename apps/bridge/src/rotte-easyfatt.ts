@@ -100,7 +100,7 @@ rotteEasyfatt.post('/catalogo', async (c) => {
  * Polling dei documenti (v2): risponde con le sessioni ddt del tenant come ordini cliente,
  * filtrate su `firstnum`/`lastnum`/`firstdate`/`lastdate`. La prima consegna segna la sessione
  * `esportata`, la seconda `importata` (Easyfatt chiede sempre `firstnum=1`, docs/DECISIONI.md
- * punto 67); le sessioni con numero minore di `firstnum` ancora `esportata` passano a
+ * punto 68); le sessioni con numero minore di `firstnum` ancora `esportata` passano a
  * `importata` (punto 53).
  */
 rotteEasyfatt.get('/documenti', async (c) => {

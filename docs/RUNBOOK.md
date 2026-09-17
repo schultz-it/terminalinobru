@@ -4,7 +4,7 @@ Guida passo passo per mettere TerminalinoBru in produzione e collegarlo a Easyfa
 non è sviluppatore: ogni passo dice dove cliccare e cosa copiare. Se un passo richiede la riga di
 comando, il comando è pronto da incollare.
 
-Per i problemi tecnici durante il collaudo (task T10) vedi la sezione 8, "Punti da verificare al
+Per i problemi tecnici durante il collaudo (task T10) vedi la sezione 8, "Punti verificati al
 primo collegamento": sono le cose che la documentazione Danea lascia ambigue e che vanno provate
 con l'Easyfatt reale.
 
@@ -146,6 +146,10 @@ A,Q
 Deve coincidere con quella impostata nella PWA (Impostazioni > Stringa formato): di norma non va
 toccata, il valore di default dell'app è già `A,Q`.
 
+Se all'import Easyfatt risponde "Stringa di formato non valida: … può contenere solo i caratteri A,
+Q, L, S, X intervallati fra di loro da un separatore" anche se il campo sembra `A,Q`, cancella il
+campo e riscrivi `A,Q` a mano: nel collaudo c'era un carattere invisibile.
+
 ### 7.2 Collegamento e-commerce
 
 **Opzioni > Moduli > E-commerce**: scegli uno dei tre siti disponibili, tipo **"Sito personalizzato"
@@ -170,10 +174,13 @@ e salvato tutto. Qualunque altro testo è un errore leggibile mostrato da Easyfa
 Ripeti questo passo ogni volta che prezzi o giacenze cambiano in modo significativo; la PWA lo
 scarica da sola al massimo ogni 6 ore, o subito con "Sincronizza" nelle Impostazioni.
 
-## 8. Punti da verificare al primo collegamento
+## 8. Punti verificati al primo collegamento
 
-`docs/PROTOCOLLI-DANEA.md` segnala alcuni comportamenti di Easyfatt non documentati con certezza.
-Vanno osservati al primo aggiornamento prodotti e al primo import da terminale reali (task T10):
+`docs/PROTOCOLLI-DANEA.md` segnalava alcuni comportamenti di Easyfatt non documentati con certezza.
+Il collaudo T10 (2026-09-17) ne ha chiusi una parte: gli esiti e i motivi dei punti non provati sono
+lì, alle voci **Collaudo T10** e **Non verificato**. In breve: un codice sconosciuto nel file del
+terminalino viene scartato con avviso senza bloccare l'import (punto 2); i punti 1, 3, 4 e 5 non
+sono stati provati. L'elenco resta come promemoria se uno di questi casi si presenta:
 
 1. **Solo i prodotti spuntati per il sito vengono inviati?** In Easyfatt ogni prodotto ha una
    spunta "pubblica su questo sito e-commerce". Se dopo il primo "Aggiorna prodotti" il numero di
@@ -192,8 +199,8 @@ Vanno osservati al primo aggiornamento prodotti e al primo import da terminale r
    verifica se l'importazione prodotti da Excel accetta anche i codici a barre aggiuntivi o solo
    quello principale; in caso negativo vanno inseriti a mano in scheda prodotto.
 
-Registra l'esito di ognuno di questi punti in `docs/PROTOCOLLI-DANEA.md`, sostituendo la dicitura
-"da verificare" con quanto osservato (è il compito del task T10).
+Se uno di questi casi si presenta, annota l'esito in `docs/PROTOCOLLI-DANEA.md` al posto della voce
+**Non verificato**.
 
 ## 9. Installare la PWA su Android e importare le impostazioni via QR
 

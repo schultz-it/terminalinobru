@@ -96,7 +96,7 @@ export function statementSegnaEsportate(
 /**
  * Segna come `importata` le sessioni indicate, già `esportata`: Easyfatt le riceve di nuovo, quindi
  * le aveva già avute a uno scarico precedente. Serve perché Easyfatt chiede sempre `firstnum=1`
- * (collaudo T10, docs/DECISIONI.md punto 67) e la regola di {@link statementSegnaImportatePrimaDi}
+ * (collaudo T10, docs/DECISIONI.md punto 68) e la regola di {@link statementSegnaImportatePrimaDi}
  * non scatta mai. Le sessioni restano comunque nella risposta: se il primo import era stato
  * annullato, Easyfatt le riprende.
  */

@@ -29,7 +29,7 @@ export function indirizzoBridge(urlBridge: string, percorso: string): string {
 /**
  * Oltre questo tempo una chiamata al bridge, lettura del corpo compresa, viene interrotta. Senza
  * limite una rete mobile appesa lasciava "Sincronizzazione…" in corso per sempre, e con essa ogni
- * sincronizzazione successiva (collaudo T10, docs/DECISIONI.md punto 66).
+ * sincronizzazione successiva (collaudo T10, docs/DECISIONI.md punto 67).
  */
 export const ATTESA_MASSIMA_BRIDGE_MS = 60_000;
 
