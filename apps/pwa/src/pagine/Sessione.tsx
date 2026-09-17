@@ -282,6 +282,7 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   return (
     <Scanner
       incorporato
+      inPausa={sovrapposto}
       titolo={sessione.nome}
       etichettaChiudi="Esci dalla sessione"
       segnapostoManuale="Scrivi il codice o cerca"
@@ -412,7 +413,7 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
           totaleAttuale={foglio.tipo === 'nuova' ? totale(foglio.prodotto.codice) : undefined}
           valoreIniziale={foglio.tipo === 'modifica' ? testoQuantita(foglio.riga.quantita) : ''}
           etichettaConferma={foglio.tipo === 'nuova' ? 'Aggiungi' : 'Salva'}
-          onConferma={(quantita) => void confermaQuantita(quantita)}
+          onConferma={confermaQuantita}
           onAnnulla={() => setFoglio(undefined)}
         />
       )}

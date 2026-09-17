@@ -10,8 +10,11 @@ import {
 } from './fotocamera.js';
 import { ottieniRilevatore, type Rilevatore } from './rilevatore.js';
 
-/** Pausa fra due analisi di fotogramma. Il nativo impiega poche decine di ms per analisi. */
+/** Pausa minima fra due analisi di fotogramma. Il nativo impiega poche decine di ms per analisi. */
 const PAUSA_ANALISI_MS = 40;
+
+/** Con l'analisi sospesa si ricontrolla solo ogni tanto se riprendere. */
+const PAUSA_SOSPESA_MS = 250;
 
 export type StatoFotocamera =
   | { fase: 'avvio' }
@@ -28,6 +31,7 @@ type CapacitaTorcia = MediaTrackCapabilities & { torch?: boolean };
 export function useFotocamera(
   video: RefObject<HTMLVideoElement | null>,
   onRilevato: (codice: string) => void,
+  opzioni: { inPausa?: boolean } = {},
 ) {
   const [stato, setStato] = useState<StatoFotocamera>({ fase: 'avvio' });
   const [tentativo, setTentativo] = useState(0);
@@ -40,6 +44,8 @@ export function useFotocamera(
   const traccia = useRef<MediaStreamTrack | undefined>(undefined);
   const ultimoOnRilevato = useRef(onRilevato);
   ultimoOnRilevato.current = onRilevato;
+  const inPausa = useRef(opzioni.inPausa ?? false);
+  inPausa.current = opzioni.inPausa ?? false;
 
   useEffect(() => {
     let stream: MediaStream | undefined;
@@ -104,8 +110,12 @@ export function useFotocamera(
 
         const analizza = async () => {
           if (!attuale()) return;
+          let pausa = PAUSA_ANALISI_MS;
           const sorgente = video.current;
-          if (sorgente && sorgente.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+          if (inPausa.current) {
+            pausa = PAUSA_SOSPESA_MS;
+          } else if (sorgente && sorgente.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+            const inizio = performance.now();
             try {
               const trovati = await rilevatore.detect(sorgente);
               const primo = trovati.find((b) => b.rawValue !== '');
@@ -113,8 +123,11 @@ export function useFotocamera(
             } catch {
               // Un fotogramma non analizzabile non ferma lo scanner.
             }
+            // Mai più di metà del tempo in analisi: su un telefono lento, o con il lettore
+            // software, il resto deve restare all'interfaccia.
+            pausa = Math.max(PAUSA_ANALISI_MS, performance.now() - inizio);
           }
-          if (attuale()) timer = setTimeout(() => void analizza(), PAUSA_ANALISI_MS);
+          if (attuale()) timer = setTimeout(() => void analizza(), pausa);
         };
         void analizza();
       } catch (errore) {
