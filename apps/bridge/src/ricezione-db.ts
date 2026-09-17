@@ -1,3 +1,5 @@
+import { aBlocchi } from './catalogo-db.js';
+
 /**
  * Query per la ricezione documenti (v2): le sessioni ddt candidate e le loro righe. La conversione
  * in `DocumentoOrdine` e le transizioni di stato stanno nella rotta (docs/DECISIONI.md punto 53).
@@ -58,20 +60,22 @@ export async function righeDiSessioni(
   idSessioni: readonly string[],
 ): Promise<Map<string, RigaSessioneRicezioneDb[]>> {
   const mappa = new Map<string, RigaSessioneRicezioneDb[]>();
-  if (idSessioni.length === 0) return mappa;
-  const segnaposto = idSessioni.map((_, indice) => `?${indice + 1}`).join(', ');
-  const risultato = await db
-    .prepare(
-      `SELECT sessione_id, codice_prodotto, quantita, ordine FROM riga
-       WHERE sessione_id IN (${segnaposto})
-       ORDER BY sessione_id, ordine`,
-    )
-    .bind(...idSessioni)
-    .all<RigaSessioneRicezioneDb>();
-  for (const riga of risultato.results) {
-    const lista = mappa.get(riga.sessione_id) ?? [];
-    lista.push(riga);
-    mappa.set(riga.sessione_id, lista);
+  // A blocchi: D1 accetta al massimo 100 parametri per statement (vedi `PARAMETRI_PER_QUERY`).
+  for (const blocco of aBlocchi(idSessioni)) {
+    const segnaposto = blocco.map((_, indice) => `?${indice + 1}`).join(', ');
+    const risultato = await db
+      .prepare(
+        `SELECT sessione_id, codice_prodotto, quantita, ordine FROM riga
+         WHERE sessione_id IN (${segnaposto})
+         ORDER BY sessione_id, ordine`,
+      )
+      .bind(...blocco)
+      .all<RigaSessioneRicezioneDb>();
+    for (const riga of risultato.results) {
+      const lista = mappa.get(riga.sessione_id) ?? [];
+      lista.push(riga);
+      mappa.set(riga.sessione_id, lista);
+    }
   }
   return mappa;
 }

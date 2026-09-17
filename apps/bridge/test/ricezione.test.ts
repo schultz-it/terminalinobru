@@ -217,3 +217,53 @@ describe('GET /easyfatt/documenti (v2)', () => {
     expect(risposta.status).toBe(401);
   });
 });
+
+describe('GET /easyfatt/documenti con molti codici e molte sessioni', () => {
+  it('supera il limite di 100 parametri per query di D1 spezzando le query a blocchi', async () => {
+    const tenant = await creaTenant();
+    // 250 codici distinti in una sessione: la ricerca delle descrizioni deve andare a blocchi.
+    const codici = Array.from({ length: 250 }, (_, i) => `P${String(i).padStart(3, '0')}`);
+    for (let inizio = 0; inizio < codici.length; inizio += 50) {
+      await env.DB.batch(
+        codici.slice(inizio, inizio + 50).map((codice) =>
+          env.DB.prepare(
+            `INSERT INTO prodotto (tenant_id, codice, descrizione, prezzi_netti, prezzi_lordi, aggiornato_il)
+             VALUES (?1, ?2, ?3, '[]', '[]', '2026-01-01T00:00:00.000Z')`,
+          ).bind(tenant.id, codice, `Descrizione ${codice}`),
+        ),
+      );
+    }
+    await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDdtDiProva({
+        id: 'ddt-grande',
+        righe: codici.map((codice, i) => ({
+          id: `r-${codice}`,
+          sessioneId: 'ddt-grande',
+          codiceProdotto: codice,
+          quantita: 1,
+          lettaIl: '2026-02-01T09:01:00.000Z',
+          ordine: i,
+        })),
+      }),
+    );
+    // Altre 120 sessioni ddt: la lettura delle righe deve andare a blocchi.
+    for (let i = 0; i < 120; i += 1) {
+      await chiamaApiConCorpo(
+        'POST',
+        '/api/sessioni',
+        tenant.token,
+        sessioneDdtDiProva({ id: `ddt-${i}` }),
+      );
+    }
+
+    const risposta = await documenti(tenant);
+    expect(risposta.status).toBe(200);
+    const corpo = await risposta.text();
+    expect((corpo.match(/<Document>/g) ?? []).length).toBe(121);
+    expect((corpo.match(/<Description>Descrizione P\d{3}<\/Description>/g) ?? []).length).toBe(250);
+    expect(corpo).toMatch(/<Description>Descrizione P249<\/Description>/);
+  }, 60_000);
+});

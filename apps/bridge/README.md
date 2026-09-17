@@ -144,6 +144,9 @@ con `wrangler d1 migrations apply DB --remote --env produzione`. Il workflow
   però Easyfatt invia lo stesso barcode, l'abbinamento passa a origine `easyfatt` e da quel momento
   è Easyfatt a possederlo.
 - Nessuna logica di protocollo sta qui: l'analisi dell'XML è in `packages/easyfatt`.
+- D1 accetta al massimo 100 parametri legati per statement: le query con `IN (...)` (descrizioni
+  dei prodotti e righe delle sessioni nella ricezione documenti) vanno a blocchi di
+  `PARAMETRI_PER_QUERY` elementi, come le scritture vanno a blocchi di `STATEMENT_PER_BLOCCO`.
 - L'importazione clienti (`POST /api/clienti/importa`) tratta l'elenco ricevuto come un catalogo
   `full`: stesso schema di tombstone di `salvaCatalogo`, marcatore `tenant.ultimo_clienti_il`
   scritto solo alla fine. Solo i clienti dell'export Easyfatt vivono su D1 (`origine: 'easyfatt'`):
