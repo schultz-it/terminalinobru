@@ -216,7 +216,8 @@ Se uno di questi casi si presenta, annota l'esito in `docs/PROTOCOLLI-DANEA.md` 
 6. Premi **"Verifica connessione"**: deve mostrare nome tenant, data ultimo catalogo e numero
    prodotti. Se il catalogo non è ancora stato inviato da Easyfatt (sezione 7.3), il numero sarà
    zero: è normale prima del primo aggiornamento prodotti.
-7. Premi **"Sincronizza catalogo"** per scaricare i prodotti sul telefono.
+7. Premi **"Sincronizza catalogo e clienti"** per scaricare i prodotti (e i clienti, quando
+   caricati) sul telefono.
 8. **Cancella `setup-easyfatt.svg` dal PC**: contiene il token in chiaro e non serve più. Se serve
    configurare un secondo telefono, si può riaprire lo stesso file prima di cancellarlo, oppure
    rigenerarlo perdendo il vecchio (lo script non salva token vecchi in chiaro da nessuna parte).
