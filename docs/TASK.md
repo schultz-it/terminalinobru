@@ -23,7 +23,7 @@ e test approfonditi, `low` per documentazione.
 | T07 | PWA: sessioni ed export | Opus 5 | high | fatto | [#7](https://github.com/schultz-it/TerminalinoBru/pull/7) |
 | T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | fatto | [#8](https://github.com/schultz-it/TerminalinoBru/pull/8) |
 | T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | fatto | [#9](https://github.com/schultz-it/TerminalinoBru/pull/9) |
-| T12 | v2 libreria: ordini XML, parametri ricezione, clienti CSV | Opus 5 | medium | da fare | |
+| T12 | v2 libreria: ordini XML, parametri ricezione, clienti da export | Opus 5 | medium | da fare | |
 | T13 | v2 bridge: clienti, numerazione, ricezione documenti | Sonnet 5 | high | da fare | |
 | T14 | v2 PWA: clienti, cliente nel DDT, Esportazioni | Opus 5 | high | da fare | |
 | T10 | Collaudo con Easyfatt reale | Opus 5 | high | da fare | |
@@ -445,7 +445,7 @@ brevi, niente gergo. Aggiungi screenshot solo se già presenti in repo. Aggiorna
 stato "in produzione" e i link.
 ```
 
-## T12 — v2 libreria: ordini XML, parametri ricezione, clienti CSV
+## T12 — v2 libreria: ordini XML, parametri ricezione, clienti da export
 
 Modello: **Opus 5**, effort **medium**. Branch `task/12-easyfatt-documenti`. Leggi anche
 `docs/PROTOCOLLI-DANEA.md` (sezioni 3 e 4), `docs/MODELLO-DATI.md` (sezione 1) e
@@ -472,13 +472,25 @@ Estendi le librerie per la v2 (DDT come ordini e-commerce), senza toccare bridge
 - `analizzaParametriRicezione(query: Record<string,string|undefined>)`: legge `appver`,
   `firstdate`, `lastdate` (yyyy-mm-dd), `firstnum`, `lastnum` (interi ≥ 1); valori assenti →
   undefined, valori malformati → errore con messaggio in italiano (`ErroreRicezione`).
-- `analizzaClientiCsv(testo)`: dall'export clienti di Easyfatt salvato come CSV (separatore `;`
-  o `,` rilevato, virgolette, BOM, CRLF) ai `Cliente`. Colonne abbinate per nome normalizzato:
-  codice (Codice, Cod., Codice cliente), nome (Denominazione, Ragione sociale, Nome, Nominativo),
-  partita IVA, codice fiscale, indirizzo, CAP, città, provincia, nazione, codice destinatario/SDI,
-  telefono, email, listino (numero 1-9 oppure "Listino N"). Restituisce
-  `{ clienti, avvisi }`: righe senza codice o nome scartate con avviso, codici duplicati con
-  avviso (vince l'ultima). Fixture in `test/fixture/clienti-*.csv` con almeno 3 varianti.
+- `analizzaClientiTabella(righe: string[][])`: dalla tabella dell'export "Soggetti" di Easyfatt
+  (prima riga = intestazioni, celle già come testo) ai `Cliente` con `origine: 'easyfatt'`.
+  Intestazioni reali dell'export (2026-09-17): `Cod.`, `Codice fiscale`, `Partita Iva`,
+  `Denominazione`, `Indirizzo`, `Cap`, `Città`, `Prov.`, `Regione`, `Nazione`,
+  `Cod. destinatario Fatt. elettr.`, `Rif. ammin. Fatt. elettr.`, `Referente`, `Tel.`, `Cell`,
+  `Fax`, `e-mail`, `Pec`, `Sconti`, `Listino`, e altre da ignorare. Abbinamento per nome
+  normalizzato (minuscolo, senza accenti né punti) con sinonimi: codice (cod, codice, codice
+  cliente), nome (denominazione, ragione sociale, nome, nominativo), partita iva, codice fiscale,
+  indirizzo, cap, citta, prov/provincia, nazione, cod destinatario/sdi/codice destinatario,
+  tel/telefono (se vuoto usa cell), e-mail/email, pec (se `sdi` vuoto e c'è la pec, `sdi` = pec),
+  listino (numero 1-9 oppure "Listino N"). Partita IVA e codice fiscale numerici accorciati da
+  Excel (zeri iniziali persi): se sono solo cifre e più corti di 11, riempi con zeri a sinistra.
+  Restituisce `{ clienti, avvisi }`: righe senza codice o nome scartate con avviso, codici
+  duplicati con avviso (vince l'ultima), colonne obbligatorie mancanti (codice, denominazione) →
+  `ErroreTabellaClienti`. Righe interamente vuote ignorate (l'export ne ha centinaia).
+- `leggiCsv(testo): string[][]` per il ripiego CSV (separatore `;` o `,` rilevato, virgolette,
+  BOM, CRLF). La lettura dell'.xlsx sta nella PWA (T14), non qui.
+- Fixture: `test/fixture/clienti-soggetti.csv` con le intestazioni reali sopra e 3 righe finte,
+  più 2 varianti (colonne in ordine diverso e con sinonimi; colonna codice mancante).
 - Test: copertura 100% come per il resto del pacchetto; un test confronta l'XML generato con una
   fixture attesa carattere per carattere.
 ```
@@ -498,9 +510,10 @@ Porta il bridge alla v2: clienti, numerazione dei DDT e ricezione documenti da E
 - Migrazione `0002_clienti_documenti.sql`: tabella `cliente`, colonne `cliente` (JSON di
   `ClienteDocumento`) e `numero_documento` su `sessione` con indice unico (tenant, numero),
   `tenant.prossimo_numero_documento` e `tenant.ultimo_clienti_il`.
-- `POST /api/clienti/importa` (Bearer, corpo CSV grezzo, max 2 MB): `analizzaClientiCsv`, upsert
-  a blocchi e tombstone per gli assenti come il catalogo `full`, `ultimo_clienti_il` alla fine;
-  risposta `{ importati, eliminati, avvisi }`. `GET /api/clienti?dal=` con lo stesso schema del
+- `POST /api/clienti/importa` (Bearer, JSON `{ "clienti": Cliente[] }` già interpretato dalla
+  PWA, validato con lo schema di core, max 2 MB, massimo 5000 clienti): upsert a blocchi e
+  tombstone per gli assenti come il catalogo `full`, `ultimo_clienti_il` alla fine; risposta
+  `{ importati, eliminati }`. `GET /api/clienti?dal=` con lo stesso schema del
   catalogo (cursore = `ultimo_clienti_il`).
 - `POST /api/sessioni`: accetta `cliente` (validato con lo schema di core, obbligatorio per i
   `ddt`); per i `ddt` assegna
@@ -518,7 +531,7 @@ Porta il bridge alla v2: clienti, numerazione dei DDT e ricezione documenti da E
   ancora `esportata` passano a `importata` (decisione 53). Errori in testo puro, mai JSON.
   Registra nel log ogni richiesta con i parametri ricevuti (serve al collaudo).
 - Test: tutti gli endpoint, numerazione stabile su rispedizione, concorrenza di due POST ddt
-  (numeri diversi), filtri della ricezione, transizioni di stato, CSV con avvisi.
+  (numeri diversi), filtri della ricezione, transizioni di stato, import clienti con tombstone.
 - README del bridge aggiornato (tabella endpoint, come caricare i clienti con curl).
 ```
 
@@ -552,9 +565,13 @@ Completa la v2 nella PWA.
 - Sessione chiusa e Home: per i DDT mostra "Ordine n. <numeroDocumento>" appena il bridge lo
   assegna (dalla risposta del POST, salvato in Dexie) e lo stato (esportata = scaricato da
   Easyfatt, importata).
-- Esportazioni (PC): sezione "Clienti" con caricamento del CSV (input file, `POST
-  /api/clienti/importa`), esito con avvisi, istruzioni su come esportare da Easyfatt (Clienti >
-  Esporta, salvare come CSV). Per le sessioni DDT il pulsante "Scarica terminale.txt" resta ma
+- Esportazioni (PC): sezione "Clienti" con caricamento del file esportato da Easyfatt (input
+  file `.xlsx` o `.csv`). L'.xlsx si legge nel browser: `fflate` (unica dipendenza nuova,
+  motivala nella PR) per aprire lo zip, poi `xl/sharedStrings.xml` e `xl/worksheets/sheet1.xml`
+  letti con `DOMParser` (celle `t="s"` dalle stringhe condivise, `t="inlineStr"`, numeriche come
+  testo senza notazione esponenziale); il CSV con `leggiCsv`. Poi `analizzaClientiTabella`,
+  anteprima (quanti clienti, avvisi), conferma e `POST /api/clienti/importa` in JSON. Istruzioni:
+  Easyfatt > Clienti > Esporta (Excel), senza filtri. Per le sessioni DDT il pulsante "Scarica terminale.txt" resta ma
   le istruzioni dicono che il DDT arriva con Strumenti > Scarica ordini da e-Commerce e poi
   "Genera da > DDT"; mostra il numero ordine nell'elenco.
 - Cancellazione di una sessione già inviata: "Cancella sessione" chiama `DELETE /api/sessioni/:id`

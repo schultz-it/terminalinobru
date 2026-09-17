@@ -248,7 +248,7 @@ i `ddt`, assegnato alla prima ricezione e mai cambiato). Stessa forma per `GET /
 
 v2: `GET /api/clienti?dal=ISO` risponde `{ "aggiornatoIl": "...", "clienti": [...], "clientiEliminati": ["C001"] }`
 con lo stesso cursore del catalogo (`tenant.ultimo_clienti_il`). `POST /api/clienti/importa` riceve
-il CSV (`text/csv`, corpo grezzo) e risponde `{ "importati": 120, "eliminati": 3, "avvisi": [] }`.
+`{ "clienti": Cliente[] }` (JSON, già interpretato dalla PWA) e risponde `{ "importati": 120, "eliminati": 3 }`.
 
 `PATCH /api/sessioni/:id`: `{ "stato": "esportata" }`. Risposta `200` con la sessione aggiornata,
 `409` se la transizione non è ammessa.
