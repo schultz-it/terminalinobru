@@ -321,6 +321,14 @@ Implementa le sessioni di lavoro nella PWA (docs/ARCHITETTURA.md sezioni 3.2, 3.
 - Test: flusso aggiungi/modifica/cancella riga, aggregazione nel riepilogo, coda upload con
   fetch mock che fallisce poi riesce.
 
+Note da T06: `Scanner` espone `onCodice(codice, sorgente)` e usa l'esito restituito (`trovato` |
+`sconosciuto` | `ignorato`) per suono e vibrazione; il lettore Bluetooth è ascoltato solo mentre
+`Scanner` è montato, quindi nella schermata sessione tienilo montato; l'anti-rimbalzo riemette un
+codice fermo nell'inquadratura solo dopo 1,5 s senza vederlo. In `codaUpload` esistono già voci
+`{ tipo: 'barcode', riferimento: <barcode> }` create dall'abbinamento: `src/sync/coda.ts` le invia
+con `POST /api/barcode` leggendo l'abbinamento dallo store `barcode`, oltre alle sessioni
+(`riferimento` = id sessione).
+
 Criteri di accettazione: un inventario di 20 letture con 3 prodotti ripetuti produce un file con
 il numero giusto di righe e le somme corrette; chiudere offline e poi riconnettersi invia la
 sessione una sola volta; nessuna quantità zero o negativa è accettata senza avviso.

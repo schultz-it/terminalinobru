@@ -9,17 +9,21 @@ import {
 } from '../src/scanner/fotocamera.js';
 import { ascoltaLettoreTastiera, rimuoviDalCampo } from '../src/scanner/lettoreTastiera.js';
 import { FORMATI_BARCODE, scegliFormatiNativi } from '../src/scanner/rilevatore.js';
-import { abbinaBarcode, risolviCodice } from '../src/scanner/risolvi.js';
+import { abbinaBarcode, risolviCodice, variantiCodice } from '../src/scanner/risolvi.js';
 import { barcode, nuovoDb, prodotto } from './aiuti.js';
 
 describe('anti-rimbalzo della fotocamera', () => {
-  it('non riemette lo stesso codice per 1,5 s', () => {
+  it('non riemette lo stesso codice finché resta inquadrato', () => {
     const emetti = creaAntiRimbalzo();
     expect(INTERVALLO_ANTI_RIMBALZO_MS).toBe(1500);
     expect(emetti('8001234567890', 0)).toBe(true);
     expect(emetti('8001234567890', 100)).toBe(false);
     expect(emetti('8001234567890', 1499)).toBe(false);
-    expect(emetti('8001234567890', 1500)).toBe(true);
+    // Visto a 1499: a 1500 è passato solo 1 ms dall'ultimo avvistamento.
+    expect(emetti('8001234567890', 1500)).toBe(false);
+    expect(emetti('8001234567890', 2998)).toBe(false);
+    // Tolto dall'inquadratura per 1,5 s: torna a essere una lettura nuova.
+    expect(emetti('8001234567890', 4498)).toBe(true);
   });
 
   it('lascia passare subito un codice diverso', () => {
@@ -31,13 +35,13 @@ describe('anti-rimbalzo della fotocamera', () => {
     expect(emetti('A', 30)).toBe(false);
   });
 
-  it("conta l'intervallo dall'ultima emissione", () => {
+  it("conta l'intervallo dall'ultimo avvistamento, non dall'ultima emissione", () => {
     const emetti = creaAntiRimbalzo(1000);
     expect(emetti('A', 0)).toBe(true);
     expect(emetti('A', 900)).toBe(false);
-    expect(emetti('A', 1000)).toBe(true);
+    expect(emetti('A', 1000)).toBe(false);
     expect(emetti('A', 1900)).toBe(false);
-    expect(emetti('A', 2000)).toBe(true);
+    expect(emetti('A', 2900)).toBe(true);
   });
 });
 
@@ -278,6 +282,22 @@ describe('risoluzione dei codici letti', () => {
     expect(await risolviCodice(db, '8009999999999')).toBeNull();
   });
 
+  it('prova lo zero iniziale: UPC-A a 12 cifre ed EAN-13 con lo zero davanti sono lo stesso codice', async () => {
+    await catalogo();
+    await db.barcode.bulkPut([
+      barcode('0036000291452', 'SCATOLA-40'), // in Easyfatt come EAN-13
+      barcode('123456789012', 'nastro'), // in Easyfatt come UPC-A
+    ]);
+    expect((await risolviCodice(db, '036000291452'))?.codice).toBe('SCATOLA-40');
+    expect((await risolviCodice(db, '0123456789012'))?.codice).toBe('nastro');
+    // Solo per barcode numerici di 12 o 13 cifre: gli altri codici restano esatti.
+    expect(variantiCodice('036000291452')).toEqual(['0036000291452']);
+    expect(variantiCodice('0123456789012')).toEqual(['123456789012']);
+    expect(variantiCodice('8001234567890')).toEqual([]);
+    expect(variantiCodice('SCATOLA-40')).toEqual([]);
+    expect(await risolviCodice(db, '0SCATOLA-40')).toBeNull();
+  });
+
   it('abbina un barcode sconosciuto con origine app e lo accoda una volta sola', async () => {
     await catalogo();
     const adesso = new Date('2026-09-17T09:00:00.000Z');
@@ -310,5 +330,16 @@ describe('risoluzione dei codici letti', () => {
     await expect(abbinaBarcode(db, '  ', 'nastro')).rejects.toThrow();
     expect(await db.barcode.get('1234567890128')).toBeUndefined();
     expect(await db.codaUpload.count()).toBe(0);
+  });
+});
+
+describe('polyfill ZXing', () => {
+  it('il wasm servito in locale è quello che il polyfill si aspetta', async () => {
+    // Con versioni diverse pnpm installerebbe due copie di zxing-wasm: il wasm importato con
+    // `?url` in rilevatore.ts non corrisponderebbe più al modulo usato da barcode-detector.
+    const polyfill = await import('barcode-detector/ponyfill');
+    const zxing = await import('zxing-wasm/reader');
+    expect(polyfill.ZXING_WASM_VERSION).toBe(zxing.ZXING_WASM_VERSION);
+    expect(polyfill.ZXING_WASM_SHA256).toBe(zxing.ZXING_WASM_SHA256);
   });
 });
