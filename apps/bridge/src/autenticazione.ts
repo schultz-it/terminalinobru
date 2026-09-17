@@ -6,7 +6,8 @@ const HASH_FITTIZIO = '0'.repeat(64);
 
 const COLONNE_TENANT =
   'id, nome, easyfatt_utente, easyfatt_password_hash, token_app_hash, ' +
-  'stringa_formato, separatore_decimale, ultimo_catalogo_il, creato_il';
+  'stringa_formato, separatore_decimale, ultimo_catalogo_il, creato_il, ' +
+  'prossimo_numero_documento, ultimo_clienti_il';
 
 /** Calcola lo SHA-256 di una stringa e lo restituisce in esadecimale minuscolo. */
 export async function hashSha256(valore: string): Promise<string> {

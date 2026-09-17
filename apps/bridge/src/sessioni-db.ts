@@ -1,4 +1,4 @@
-import type { ModalitaScansione, Riga, TipoSessione } from '@terminalinobru/core';
+import type { ClienteDocumento, ModalitaScansione, Riga, TipoSessione } from '@terminalinobru/core';
 import { STATEMENT_PER_BLOCCO } from './catalogo-db.js';
 
 /**
@@ -7,18 +7,31 @@ import { STATEMENT_PER_BLOCCO } from './catalogo-db.js';
  */
 
 const COLONNE_SESSIONE =
-  'id, tipo, nome, note, stato, modalita, dispositivo, creata_il, chiusa_il, ricevuta_il, esportata_il, importata_il';
+  'id, tipo, nome, note, stato, modalita, dispositivo, creata_il, chiusa_il, ricevuta_il, ' +
+  'esportata_il, importata_il, cliente, numero_documento';
 
 const COLONNE_RIGA = 'id, sessione_id, codice_prodotto, quantita, barcode_letto, letta_il, ordine';
 
 // L'upsert è per `id`, chiave globale della sessione generata sul telefono. `ricevuta_il` non
 // compare nel SET: resta quella dell'invio originale anche quando la sessione viene risostituita.
 // Riaprire e richiudere sul telefono riporta lo stato a "chiusa" e azzera le date di export/import.
-const UPSERT_SESSIONE = `
+// `numero_documento` non compare nel SET: assegnato una sola volta, alla prima ricezione (v2).
+//
+// Due varianti della VALUES per `numero_documento`: quando `assegnaNumero` è true (ddt alla prima
+// ricezione) legge e "consuma" `tenant.prossimo_numero_documento` con una subquery nello stesso
+// statement; l'incremento vero e proprio è lo statement successivo nello stesso batch (v2,
+// docs/DECISIONI.md punto 53). D1 esegue un batch come una singola transazione e in ordine, quindi
+// la subquery vede ancora il valore non incrementato e due POST concorrenti non si sovrappongono:
+// D1 serializza le transazioni di scrittura.
+function sqlUpsertSessione(assegnaNumero: boolean): string {
+  const numeroDocumento = assegnaNumero
+    ? '(SELECT prossimo_numero_documento FROM tenant WHERE id = ?2)'
+    : 'NULL';
+  return `
 INSERT INTO sessione (
   id, tenant_id, tipo, nome, note, stato, modalita, dispositivo, creata_il, chiusa_il, ricevuta_il,
-  esportata_il, importata_il
-) VALUES (?1, ?2, ?3, ?4, ?5, 'chiusa', ?6, ?7, ?8, ?9, ?10, NULL, NULL)
+  esportata_il, importata_il, cliente, numero_documento
+) VALUES (?1, ?2, ?3, ?4, ?5, 'chiusa', ?6, ?7, ?8, ?9, ?10, NULL, NULL, ?11, ${numeroDocumento})
 ON CONFLICT(id) DO UPDATE SET
   tipo = excluded.tipo,
   nome = excluded.nome,
@@ -29,8 +42,13 @@ ON CONFLICT(id) DO UPDATE SET
   creata_il = excluded.creata_il,
   chiusa_il = excluded.chiusa_il,
   esportata_il = NULL,
-  importata_il = NULL
-RETURNING ricevuta_il`;
+  importata_il = NULL,
+  cliente = excluded.cliente
+RETURNING ricevuta_il, numero_documento`;
+}
+
+const INCREMENTA_NUMERO_DOCUMENTO =
+  'UPDATE tenant SET prossimo_numero_documento = prossimo_numero_documento + 1 WHERE id = ?1';
 
 const ELIMINA_RIGHE = 'DELETE FROM riga WHERE sessione_id = ?1';
 
@@ -53,6 +71,7 @@ export interface SessioneDaSalvare {
   dispositivo?: string;
   creataIl: string;
   chiusaIl: string;
+  cliente?: ClienteDocumento;
   righe: readonly Riga[];
 }
 
@@ -70,6 +89,8 @@ export interface RigaSessioneDb {
   ricevuta_il: string;
   esportata_il: string | null;
   importata_il: string | null;
+  cliente: string | null;
+  numero_documento: number | null;
 }
 
 /** Riga della tabella `sessione` con il conteggio e la somma delle righe, per l'elenco. */
@@ -103,6 +124,8 @@ export interface SessioneSommario {
   ricevutaIl: string;
   esportataIl?: string;
   importataIl?: string;
+  cliente?: ClienteDocumento;
+  numeroDocumento?: number;
 }
 
 /** Sessione dell'elenco, con conteggio e somma delle quantità. */
@@ -116,8 +139,20 @@ export interface SessioneDettaglio extends SessioneSommario {
   righe: Riga[];
 }
 
+/** Legge il cliente salvato come JSON, `undefined` se assente o non interpretabile. */
+function rigaCliente(json: string | null): ClienteDocumento | undefined {
+  if (json === null) return undefined;
+  try {
+    return JSON.parse(json) as ClienteDocumento;
+  } catch {
+    // Scritto solo da questo modulo come JSON.stringify: non dovrebbe mai capitare.
+    return undefined;
+  }
+}
+
 /** Converte una riga `sessione` nella forma di dominio, senza righe. */
 function rigaASommario(riga: RigaSessioneDb): SessioneSommario {
+  const cliente = rigaCliente(riga.cliente);
   return {
     id: riga.id,
     tipo: riga.tipo,
@@ -131,6 +166,8 @@ function rigaASommario(riga: RigaSessioneDb): SessioneSommario {
     ...(riga.dispositivo === null ? {} : { dispositivo: riga.dispositivo }),
     ...(riga.esportata_il === null ? {} : { esportataIl: riga.esportata_il }),
     ...(riga.importata_il === null ? {} : { importataIl: riga.importata_il }),
+    ...(cliente === undefined ? {} : { cliente }),
+    ...(riga.numero_documento === null ? {} : { numeroDocumento: riga.numero_documento }),
   };
 }
 
@@ -147,19 +184,29 @@ function rigaARiga(riga: RigaRigaDb): Riga {
   };
 }
 
+/** Esito dell'upsert: `ricevutaIl` resta quella del primo invio, `numeroDocumento` solo per i ddt. */
+export interface EsitoUpsertSessione {
+  ricevutaIl: string;
+  numeroDocumento?: number;
+}
+
 /**
  * Upsert per `id`: crea la sessione oppure sostituisce campi e righe di una già ricevuta.
- * Restituisce `ricevutaIl`, che resta quella del primo invio anche quando si sostituisce.
+ * `assegnaNumero` va passato `true` solo per una sessione `ddt` che non esiste ancora: in quel
+ * caso legge e incrementa `tenant.prossimo_numero_documento` nello stesso batch (v2). Un upsert
+ * successivo della stessa sessione va chiamato con `assegnaNumero: false`: il numero non cambia
+ * perché non compare nel SET della ON CONFLICT.
  */
 export async function upsertSessione(
   db: D1Database,
   tenantId: string,
   sessione: SessioneDaSalvare,
   adesso: string,
-): Promise<string> {
+  assegnaNumero: boolean,
+): Promise<EsitoUpsertSessione> {
   const statement = [
     db
-      .prepare(UPSERT_SESSIONE)
+      .prepare(sqlUpsertSessione(assegnaNumero))
       .bind(
         sessione.id,
         tenantId,
@@ -171,7 +218,9 @@ export async function upsertSessione(
         sessione.creataIl,
         sessione.chiusaIl,
         adesso,
+        sessione.cliente === undefined ? null : JSON.stringify(sessione.cliente),
       ),
+    ...(assegnaNumero ? [db.prepare(INCREMENTA_NUMERO_DOCUMENTO).bind(tenantId)] : []),
     db.prepare(ELIMINA_RIGHE).bind(sessione.id),
     ...sessione.righe.map((riga) =>
       db
@@ -188,15 +237,21 @@ export async function upsertSessione(
     ),
   ];
 
-  let ricevutaIl = adesso;
+  let esito: EsitoUpsertSessione = { ricevutaIl: adesso };
   for (let inizio = 0; inizio < statement.length; inizio += STATEMENT_PER_BLOCCO) {
     const blocco = await db.batch(statement.slice(inizio, inizio + STATEMENT_PER_BLOCCO));
     if (inizio === 0) {
-      const primaRiga = blocco[0]?.results[0] as { ricevuta_il: string } | undefined;
-      ricevutaIl = primaRiga?.ricevuta_il ?? adesso;
+      const primaRiga = blocco[0]?.results[0] as
+        { ricevuta_il: string; numero_documento: number | null } | undefined;
+      esito = {
+        ricevutaIl: primaRiga?.ricevuta_il ?? adesso,
+        ...(primaRiga?.numero_documento === null || primaRiga?.numero_documento === undefined
+          ? {}
+          : { numeroDocumento: primaRiga.numero_documento }),
+      };
     }
   }
-  return ricevutaIl;
+  return esito;
 }
 
 /** Elenco delle sessioni del tenant, senza righe, con conteggio e somma delle quantità. */
@@ -210,7 +265,7 @@ export async function elencoSessioni(
   const risultato = await db
     .prepare(
       `SELECT s.id, s.tipo, s.nome, s.note, s.stato, s.modalita, s.dispositivo, s.creata_il,
-              s.chiusa_il, s.ricevuta_il, s.esportata_il, s.importata_il,
+              s.chiusa_il, s.ricevuta_il, s.esportata_il, s.importata_il, s.cliente, s.numero_documento,
               COUNT(r.id) AS conteggio_righe, COALESCE(SUM(r.quantita), 0) AS somma_quantita
        FROM sessione s
        LEFT JOIN riga r ON r.sessione_id = s.id
@@ -292,4 +347,30 @@ export async function impostaStato(
     )
     .first<RigaSessioneDb>();
   return riga === null ? null : rigaASommario(riga);
+}
+
+/** Esito del tentativo di cancellazione di una sessione (v2). */
+export type EsitoEliminaSessione = 'eliminata' | 'non_trovata' | 'non_cancellabile';
+
+/**
+ * Cancella una sessione e le sue righe, solo se è ancora `chiusa`: una volta che Easyfatt l'ha
+ * scaricata (`esportata` o `importata`) il telefono non può più farla sparire da sotto (v2,
+ * docs/DECISIONI.md punto 57).
+ */
+export async function eliminaSessione(
+  db: D1Database,
+  tenantId: string,
+  id: string,
+): Promise<EsitoEliminaSessione> {
+  const riga = await db
+    .prepare('SELECT stato FROM sessione WHERE id = ?1 AND tenant_id = ?2')
+    .bind(id, tenantId)
+    .first<{ stato: string }>();
+  if (riga === null) return 'non_trovata';
+  if (riga.stato !== 'chiusa') return 'non_cancellabile';
+  await db.batch([
+    db.prepare(ELIMINA_RIGHE).bind(id),
+    db.prepare('DELETE FROM sessione WHERE id = ?1 AND tenant_id = ?2').bind(id, tenantId),
+  ]);
+  return 'eliminata';
 }

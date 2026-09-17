@@ -182,6 +182,27 @@ export async function salvaCatalogo(
     .run();
 }
 
+/**
+ * Descrizione dei prodotti indicati, per codice. Usata dalla ricezione documenti (v2), che riceve
+ * dalle sessioni solo il codice e deve completare la riga con la descrizione dal catalogo.
+ */
+export async function descrizioniProdotti(
+  db: D1Database,
+  tenantId: string,
+  codici: readonly string[],
+): Promise<Map<string, string>> {
+  const unici = [...new Set(codici)];
+  if (unici.length === 0) return new Map();
+  const segnaposto = unici.map((_, indice) => `?${indice + 2}`).join(', ');
+  const risultato = await db
+    .prepare(
+      `SELECT codice, descrizione FROM prodotto WHERE tenant_id = ?1 AND codice IN (${segnaposto})`,
+    )
+    .bind(tenantId, ...unici)
+    .all<{ codice: string; descrizione: string }>();
+  return new Map(risultato.results.map((riga) => [riga.codice, riga.descrizione]));
+}
+
 /** Riga della tabella `prodotto` come arriva da D1. */
 export interface RigaProdotto {
   codice: string;

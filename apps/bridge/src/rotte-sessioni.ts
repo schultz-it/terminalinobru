@@ -5,6 +5,7 @@ import type { Contesto } from './ambiente.js';
 import { autenticaApp } from './autenticazione.js';
 import type { SessioneDaSalvare } from './sessioni-db.js';
 import {
+  eliminaSessione,
   elencoSessioni,
   impostaStato,
   proprietarioSessione,
@@ -68,6 +69,9 @@ rotteSessioni.post('/', async (c) => {
   if (sessione.righe === undefined || sessione.righe.length === 0) {
     return c.json({ errore: 'La sessione non contiene righe.' }, 400);
   }
+  if (sessione.tipo === 'ddt' && sessione.cliente === undefined) {
+    return c.json({ errore: 'Il cliente è obbligatorio per i DDT.' }, 400);
+  }
 
   const daSalvare: SessioneDaSalvare = {
     id: sessione.id,
@@ -79,6 +83,7 @@ rotteSessioni.post('/', async (c) => {
     righe: sessione.righe,
     ...(sessione.note === undefined ? {} : { note: sessione.note }),
     ...(sessione.dispositivo === undefined ? {} : { dispositivo: sessione.dispositivo }),
+    ...(sessione.cliente === undefined ? {} : { cliente: sessione.cliente }),
   };
 
   const tenant = c.get('tenant');
@@ -87,8 +92,24 @@ rotteSessioni.post('/', async (c) => {
   if (proprietario !== null && proprietario !== tenant.id) {
     return c.json({ errore: 'Id di sessione già in uso.' }, 409);
   }
-  const ricevutaIl = await upsertSessione(c.env.DB, tenant.id, daSalvare, new Date().toISOString());
-  return c.json({ id: sessione.id, ricevutaIl }, 201);
+  // Il numero si assegna solo alla prima ricezione di un ddt: un upsert successivo (proprietario
+  // già presente) non ne consuma uno nuovo (v2, docs/DECISIONI.md punto 53).
+  const assegnaNumero = sessione.tipo === 'ddt' && proprietario === null;
+  const esito = await upsertSessione(
+    c.env.DB,
+    tenant.id,
+    daSalvare,
+    new Date().toISOString(),
+    assegnaNumero,
+  );
+  return c.json(
+    {
+      id: sessione.id,
+      ricevutaIl: esito.ricevutaIl,
+      ...(esito.numeroDocumento === undefined ? {} : { numeroDocumento: esito.numeroDocumento }),
+    },
+    201,
+  );
 });
 
 /** Elenco delle sessioni del tenant, senza righe, con conteggio e somma delle quantità. */
@@ -191,4 +212,25 @@ rotteSessioni.patch('/:id', async (c) => {
     new Date().toISOString(),
   );
   return c.json(aggiornata, 200);
+});
+
+/**
+ * Cancella una sessione e le sue righe, ma solo finché è ancora `chiusa`: se Easyfatt l'ha già
+ * scaricata il telefono non può più farla sparire da sotto (v2, docs/DECISIONI.md punto 57).
+ */
+rotteSessioni.delete('/:id', async (c) => {
+  const tenant = c.get('tenant');
+  const id = c.req.param('id');
+  const esito = await eliminaSessione(c.env.DB, tenant.id, id);
+  if (esito === 'non_trovata') return c.json({ errore: 'Sessione non trovata.' }, 404);
+  if (esito === 'non_cancellabile') {
+    return c.json(
+      {
+        errore:
+          'La sessione è già stata scaricata da Easyfatt: non può più essere cancellata dal telefono.',
+      },
+      409,
+    );
+  }
+  return c.body(null, 204);
 });
