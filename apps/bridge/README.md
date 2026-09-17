@@ -94,10 +94,12 @@ curl -u easyfatt:LA_PASSWORD \
 ## Deploy in produzione
 
 Passo passo per il titolare in `docs/RUNBOOK.md`. In breve: il worker di produzione si chiama
-`terminalinobru` (sezione `[env.produzione]` di `wrangler.toml`) e il deploy avviene solo dalla CI,
-sul push su `main`, con il workflow `.github/workflows/deploy.yml`. Non esiste un comando di deploy
-manuale supportato: farlo a mano richiederebbe sostituire a mano il segnaposto
-`__D1_DATABASE_ID_PRODUZIONE__` in `wrangler.toml` con l'id reale, senza mai committarlo.
+`terminalinobru` (sezione `[env.produzione]` di `wrangler.toml`, con l'id del D1 in chiaro) e lo
+pubblica Cloudflare stesso a ogni push su `main`, con la repository collegata e questi campi di
+build: `pnpm install --frozen-lockfile && pnpm -r build` e
+`pnpm --filter bridge exec wrangler deploy --env produzione`. Le migrazioni D1 si applicano dal PC
+con `wrangler d1 migrations apply DB --remote --env produzione`. Il workflow
+`.github/workflows/deploy.yml` è la via di riserva, solo manuale.
 
 ## Note di implementazione
 

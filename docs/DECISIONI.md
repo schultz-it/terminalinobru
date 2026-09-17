@@ -79,3 +79,7 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 
 47. **L'id del D1 di produzione non è nel repository.** `wrangler.toml` tiene un segnaposto nella sezione `[env.produzione]`; il workflow di deploy lo sostituisce dal secret `CLOUDFLARE_D1_DATABASE_ID` prima delle migrazioni e del deploy. Per questo lo script `tenant:crea --remote` non può usare il binding `DB`: passa a wrangler il nome del database (`terminalinobru`), che viene risolto dall'account. In locale resta il binding, che wrangler usa per trovare il file SQLite. Deciso in revisione di T09.
 48. **Il deploy si avvia anche a mano.** `workflow_dispatch` sul workflow Deploy: il primo deploy avviene dopo aver impostato i secret, senza aspettare un altro merge su `main`.
+
+## 2026-09-17 — Primo deploy
+
+49. **Il deploy lo fa Cloudflare con la repository collegata, non GitHub Actions.** Andrea ha collegato la repo dalla dashboard: nessun secret da conservare su GitHub e una sola pagina da guardare. Il workflow `deploy.yml` resta come via di riserva, solo `workflow_dispatch`, così un push su `main` non pubblica due volte. Conseguenza: l'id del D1 di produzione sta in chiaro in `wrangler.toml` (non è un segreto: senza il token API non consente nulla, ed è la prassi documentata da Cloudflare) e le migrazioni D1 si applicano dal PC con `wrangler d1 migrations apply DB --remote --env produzione`, perché la build di Cloudflare non le esegue. Sostituisce la parte della decisione 47 sul segnaposto.

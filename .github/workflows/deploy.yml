@@ -1,9 +1,10 @@
 name: Deploy
 
+# Il deploy di produzione lo fa Cloudflare, che compila e pubblica la repo a ogni push su main
+# (Workers & Pages > terminalinobru > Settings > Build, vedi docs/RUNBOOK.md sezione 4).
+# Questo workflow resta come via di riserva, solo manuale: richiede i secret
+# CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID nel repository.
 on:
-  push:
-    branches: [main]
-  # Avvio manuale dalla scheda Actions: serve al primo deploy, dopo aver impostato i secret.
   workflow_dispatch:
 
 jobs:
@@ -34,12 +35,6 @@ jobs:
 
       - name: Build
         run: pnpm -r build
-
-      - name: Imposta l'id del database D1 di produzione
-        run: |
-          sed -i "s/__D1_DATABASE_ID_PRODUZIONE__/${D1_DATABASE_ID}/" apps/bridge/wrangler.toml
-        env:
-          D1_DATABASE_ID: ${{ secrets.CLOUDFLARE_D1_DATABASE_ID }}
 
       - name: Applica le migrazioni D1 di produzione
         run: pnpm --filter bridge exec wrangler d1 migrations apply DB --remote --env produzione

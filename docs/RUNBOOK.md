@@ -35,43 +35,59 @@ Il database (D1) è dove vivono catalogo, sessioni e credenziali. Va creato una 
    ```
 
 4. Il comando stampa un blocco con `database_id = "..."`. **Copia quella stringa**, serve al passo
-   3 (va in un secret di GitHub, non si scrive nei file del progetto).
+   4: va nel file `apps/bridge/wrangler.toml`, sezione `[env.produzione]`, campo
+   `database_id` (chi sviluppa lo fa al posto tuo: per Imballaggi Brunelli è già lì).
 
-## 3. Impostare i secret in GitHub
+## 3. Collegare la repository a Cloudflare
 
-I secret sono valori riservati che GitHub tiene al sicuro e passa solo al workflow di deploy, senza
-mai comparire nel codice.
+Cloudflare può compilare e pubblicare il progetto da solo, a ogni modifica unita nel branch
+`main`, senza nessun segreto da conservare altrove.
 
-1. Vai sulla pagina del repository su GitHub.
-2. **Settings > Secrets and variables > Actions > New repository secret**.
-3. Crea questi tre secret:
+1. Dashboard Cloudflare > **Workers & Pages > Create > Workers > Import a repository**.
+2. Autorizza GitHub e scegli la repository `schultz-it/TerminalinoBru`, branch `main`.
+3. Nome del Worker: `terminalinobru` (esatto, deve coincidere con `wrangler.toml`).
+4. Nella schermata di configurazione della build compila così (i valori di default non vanno
+   bene, il progetto è un monorepo):
 
-   | Nome | Valore | Dove trovarlo |
-   | --- | --- | --- |
-   | `CLOUDFLARE_ACCOUNT_ID` | l'id del tuo account Cloudflare | Dashboard Cloudflare, barra laterale destra di qualsiasi pagina del tuo account, oppure `pnpm --filter bridge exec wrangler whoami` |
-   | `CLOUDFLARE_API_TOKEN` | un token con permesso di modificare Worker e D1 | Dashboard Cloudflare > **My Profile > API Tokens > Create Token**, modello "Edit Cloudflare Workers" (aggiungi anche il permesso D1 Edit se non incluso) |
-   | `CLOUDFLARE_D1_DATABASE_ID` | l'id copiato al passo 2 | output di `wrangler d1 create` |
+   | Campo | Valore |
+   | --- | --- |
+   | Root directory | `/` (lascia vuoto) |
+   | Build command | `pnpm install --frozen-lockfile && pnpm -r build` |
+   | Deploy command | `pnpm --filter bridge exec wrangler deploy --env produzione` |
 
-Nessuno di questi tre valori va mai scritto in un file del progetto: solo qui, nei secret di
-GitHub.
+   Se il Worker esiste già (per esempio perché l'hai creato collegando la repo prima di leggere
+   questa guida), gli stessi campi sono in **Workers & Pages > terminalinobru > Settings >
+   Build**: correggili e salva.
+5. Non servono variabili né secret: il database è indicato in `wrangler.toml` e il token per
+   pubblicare lo gestisce Cloudflare.
 
-## 4. Primo deploy
+## 4. Primo deploy e tabelle del database
 
-Il deploy è automatico: **ogni volta che qualcosa viene unito nel branch `main`, GitHub Actions
-compila il progetto e lo pubblica su Cloudflare da solo**, applicando prima le eventuali modifiche
-al database. Non serve nessun comando manuale.
+1. **Tabelle del database** (una volta sola, e dopo ogni aggiornamento che aggiunge migrazioni in
+   `apps/bridge/migrations`): dal terminale, nella cartella del progetto, con il login del
+   passo 2:
 
-1. Dopo aver impostato i tre secret (sezione 3), vai su GitHub, scheda **Actions**, voce
-   **Deploy** nell'elenco a sinistra.
-2. Premi **Run workflow** (a destra), lascia `main` e conferma. Le esecuzioni precedenti in rosso
-   sono normali: erano partite prima che i secret esistessero.
-3. Il workflow è verde quando finisce: significa che il Worker `terminalinobru` è online.
-4. Verifica aprendo `https://terminalinobru.<il-tuo-account>.workers.dev/api/salute` nel browser:
-   deve rispondere `{"ok":true}`. L'indirizzo esatto lo trovi nella dashboard Cloudflare, sezione
-   **Workers & Pages**, alla voce `terminalinobru`.
+   ```bash
+   pnpm --filter bridge exec wrangler d1 migrations apply DB --remote --env produzione
+   ```
 
-Se il workflow fallisce, apri il log del passo che è andato in rosso: di solito è un secret scritto
-male (spazi, virgolette) o il token API senza il permesso D1.
+   Risponde con l'elenco delle migrazioni applicate. Le modifiche al database non le fa mai
+   Cloudflare da solo: il codice nuovo si aspetta le tabelle nuove, quindi questo comando va
+   lanciato prima che la build pubblichi una versione con migrazioni nuove (le note di rilascio
+   lo dicono quando serve).
+2. **Build**: in **Workers & Pages > terminalinobru**, scheda **Deployments**, la build parte da
+   sola a ogni push su `main`; dopo aver salvato i campi del passo 3 usa **Retry build** (o
+   **Create deployment**) sull'ultima. Se è rossa, apri il log: quasi sempre è un campo della
+   build scritto male.
+3. Verifica aprendo `https://terminalinobru.<il-tuo-account>.workers.dev/api/salute` nel browser:
+   deve rispondere `{"ok":true}`. Poi apri l'indirizzo senza `/api/salute`: deve comparire la
+   PWA. L'indirizzo esatto lo trovi nella stessa pagina del Worker (pulsante **Visit**).
+
+Via di riserva: `.github/workflows/deploy.yml` fa le stesse cose da GitHub Actions, ma solo se
+avviato a mano (scheda **Actions > Deploy > Run workflow**) e con i secret `CLOUDFLARE_API_TOKEN`
+(modello "Edit Cloudflare Workers" più permesso D1 Edit) e `CLOUDFLARE_ACCOUNT_ID` impostati in
+**Settings > Secrets and variables > Actions** della repository. Serve solo se si smette di usare
+il collegamento diretto.
 
 ## 5. Creare il tenant e conservare le credenziali
 
