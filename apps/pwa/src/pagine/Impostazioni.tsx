@@ -4,9 +4,11 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { leggiStatoBridge, messaggioErrore, type StatoBridge } from '../api.js';
 import { Avviso } from '../componenti/Avviso.js';
 import { Pagina } from '../componenti/Pagina.js';
+import { db } from '../db.js';
 import { StatoRete } from '../componenti/StatoRete.js';
 import { formattaDataOra, formattaNumero } from '../formato.js';
 import { useImpostazioni } from '../hooks/useImpostazioni.js';
+import { useLiveQuery } from '../hooks/useLiveQuery.js';
 import { useOnline } from '../hooks/useOnline.js';
 import {
   analizzaTestoSetup,
@@ -115,8 +117,8 @@ export function Impostazioni() {
         ? {
             tipo: 'conferma',
             testo: ultimoEsito.completa
-              ? `Catalogo scaricato: ${quanti(ultimoEsito.prodottiAggiornati, 'prodotto', 'prodotti')}.`
-              : `Catalogo aggiornato: ${quanti(ultimoEsito.prodottiAggiornati, 'prodotto modificato', 'prodotti modificati')}, ${quanti(ultimoEsito.prodottiEliminati, 'eliminato', 'eliminati')}.`,
+              ? `Catalogo scaricato: ${quanti(ultimoEsito.prodottiAggiornati, 'prodotto', 'prodotti')}, ${quanti(ultimoEsito.clientiAggiornati, 'cliente', 'clienti')}.`
+              : `Catalogo aggiornato: ${quanti(ultimoEsito.prodottiAggiornati, 'prodotto modificato', 'prodotti modificati')}, ${quanti(ultimoEsito.prodottiEliminati, 'eliminato', 'eliminati')}; ${quanti(ultimoEsito.clientiAggiornati, 'cliente modificato', 'clienti modificati')}, ${quanti(ultimoEsito.clientiEliminati, 'eliminato', 'eliminati')}.`,
           }
         : { tipo: 'errore', testo: ultimoEsito.messaggio },
     );
@@ -337,6 +339,7 @@ export function Impostazioni() {
       <section className="card flex flex-col gap-4 p-4">
         <h2 className="text-base uppercase tracking-wide">Catalogo</h2>
         <StatoRete />
+        <ConteggiTelefono />
         <button
           type="button"
           className="pulsante-primario"
@@ -344,7 +347,7 @@ export function Impostazioni() {
           onClick={() => void sincronizza()}
         >
           <RefreshCw size={20} className={inCorso ? 'animate-spin' : ''} />
-          {inCorso ? 'Sincronizzazione…' : 'Sincronizza catalogo'}
+          {inCorso ? 'Sincronizzazione…' : 'Sincronizza catalogo e clienti'}
         </button>
       </section>
 
@@ -465,5 +468,28 @@ export function Impostazioni() {
         <p className="etichetta">TerminalinoBru</p>
       </footer>
     </Pagina>
+  );
+}
+
+/** Quanti prodotti e clienti ci sono nel telefono. */
+function ConteggiTelefono() {
+  const conteggi = useLiveQuery(
+    async () => ({ prodotti: await db.prodotti.count(), clienti: await db.clienti.count() }),
+    [],
+  );
+  if (!conteggi) return null;
+  return (
+    <p className="flex flex-wrap gap-x-6 gap-y-1">
+      <span>
+        <span className="text-2xl font-bold tabular-nums">{formattaNumero(conteggi.prodotti)}</span>{' '}
+        <span className="etichetta">{conteggi.prodotti === 1 ? 'prodotto' : 'prodotti'}</span>
+      </span>
+      <span>
+        <span className="text-2xl font-bold tabular-nums">{formattaNumero(conteggi.clienti)}</span>{' '}
+        <span className="etichetta">
+          {conteggi.clienti === 1 ? 'cliente' : 'clienti'} nel telefono
+        </span>
+      </span>
+    </p>
   );
 }

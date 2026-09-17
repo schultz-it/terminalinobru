@@ -1,5 +1,6 @@
 import type { Impostazioni } from '@terminalinobru/core';
 import { useSyncExternalStore } from 'react';
+import { z } from 'zod';
 import { ErroreBridge, inviaJsonAlBridge, messaggioErrore } from '../api.js';
 import { db as dbApp, type DatabaseTerminalino, type VoceCodaUpload } from '../db.js';
 import { caricaImpostazioni } from '../impostazioni.js';
@@ -44,6 +45,23 @@ async function registraErrore(
   return messaggio;
 }
 
+const schemaRispostaSessione = z.object({
+  numeroDocumento: z.number().int().positive().optional(),
+});
+
+/**
+ * `numeroDocumento` della risposta di `POST /api/sessioni`, se c'è. Una risposta illeggibile non
+ * fa fallire l'invio, già riuscito: il numero arriverà con il prossimo allineamento.
+ */
+async function leggiNumeroDocumento(risposta: Response): Promise<number | undefined> {
+  try {
+    const esito = schemaRispostaSessione.safeParse(await risposta.json());
+    return esito.success ? esito.data.numeroDocumento : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Invia una sessione chiusa. Toglie la voce solo se la sessione è ancora quella spedita: se nel
  * frattempo è stata riaperta e richiusa, la voce resta per rispedire la versione nuova.
@@ -59,10 +77,15 @@ async function inviaSessione(
     if (voce.id !== undefined) await db.codaUpload.delete(voce.id);
     return 'scartata';
   }
-  await inviaJsonAlBridge(impostazioni, '/api/sessioni', sessione, recupera);
+  const risposta = await inviaJsonAlBridge(impostazioni, '/api/sessioni', sessione, recupera);
+  const numeroDocumento = await leggiNumeroDocumento(risposta);
   await db.transaction('rw', db.sessioni, db.codaUpload, async () => {
     // Da ora il bridge ha la sessione: cancellarla solo sul telefono la lascerebbe sul PC.
-    await db.sessioni.update(voce.riferimento, { inviataIl: new Date().toISOString() });
+    await db.sessioni.update(voce.riferimento, {
+      inviataIl: new Date().toISOString(),
+      // Il numero d'ordine lo assegna il bridge ai DDT alla prima ricezione e non cambia più.
+      ...(numeroDocumento === undefined ? {} : { numeroDocumento }),
+    });
     const attuale = await db.sessioni.get(voce.riferimento);
     if (attuale?.stato === 'chiusa' && attuale.chiusaIl !== sessione.chiusaIl) return;
     if (voce.id !== undefined) await db.codaUpload.delete(voce.id);

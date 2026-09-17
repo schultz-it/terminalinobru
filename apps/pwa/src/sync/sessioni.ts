@@ -1,4 +1,8 @@
-import type { Impostazioni, StatoSessione } from '@terminalinobru/core';
+import {
+  schemaClienteDocumento,
+  type Impostazioni,
+  type StatoSessione,
+} from '@terminalinobru/core';
 import { z } from 'zod';
 import { messaggioErrore, richiestaBridge } from '../api.js';
 import type { DatabaseTerminalino, SessioneLocale } from '../db.js';
@@ -21,6 +25,9 @@ const schemaSessioneBridge = z.object({
   importataIl: z.string().optional(),
   conteggioRighe: z.number(),
   sommaQuantita: z.number(),
+  // v2, solo ddt.
+  cliente: schemaClienteDocumento.optional(),
+  numeroDocumento: z.number().optional(),
 });
 
 /** Sessione così come la restituisce `GET /api/sessioni` del bridge, con conteggio e somma righe. */
@@ -59,6 +66,21 @@ export function sessioniDaAllineare(
   return risultato;
 }
 
+/** Sessioni locali a cui manca il numero d'ordine che il bridge ha già assegnato. */
+export function numeriDaAllineare(
+  locali: readonly Pick<SessioneLocale, 'id' | 'numeroDocumento'>[],
+  elenco: readonly Pick<SessioneBridge, 'id' | 'numeroDocumento'>[],
+): { id: string; numeroDocumento: number }[] {
+  const numeri = new Map(elenco.map((sessione) => [sessione.id, sessione.numeroDocumento]));
+  const risultato: { id: string; numeroDocumento: number }[] = [];
+  for (const sessione of locali) {
+    const remoto = numeri.get(sessione.id);
+    if (remoto === undefined || remoto === sessione.numeroDocumento) continue;
+    risultato.push({ id: sessione.id, numeroDocumento: remoto });
+  }
+  return risultato;
+}
+
 export type OpzioniAllineamento = {
   db: DatabaseTerminalino;
   impostazioni: Pick<Impostazioni, 'urlBridge' | 'token'>;
@@ -92,7 +114,12 @@ export async function allineaSessioniLocali(
       for (const { id, stato } of scelte) {
         await db.sessioni.update(id, { stato });
       }
-      return scelte;
+      // Il numero d'ordine non cambia mai: se la risposta della POST è andata persa, arriva da qui.
+      const numeri = numeriDaAllineare(locali, elenco);
+      for (const { id, numeroDocumento } of numeri) {
+        await db.sessioni.update(id, { numeroDocumento });
+      }
+      return [...new Set([...scelte, ...numeri].map((voce) => voce.id))];
     });
     return { ok: true, aggiornate: daAggiornare.length };
   } catch (errore) {

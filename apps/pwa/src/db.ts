@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Barcode, Prodotto, Riga, Sessione } from '@terminalinobru/core';
+import type { Barcode, Cliente, Prodotto, Riga, Sessione } from '@terminalinobru/core';
 
 /** Voce della coda di invio al bridge (docs/MODELLO-DATI.md sezione 3). Usata da T06 e T07. */
 export type VoceCodaUpload = {
@@ -31,6 +31,7 @@ export class DatabaseTerminalino extends Dexie {
   righe!: EntityTable<Riga, 'id'>;
   codaUpload!: EntityTable<VoceCodaUpload, 'id'>;
   impostazioni!: EntityTable<VoceImpostazione, 'chiave'>;
+  clienti!: EntityTable<Cliente, 'id'>;
 
   constructor(nome = 'terminalinobru') {
     super(nome);
@@ -41,6 +42,10 @@ export class DatabaseTerminalino extends Dexie {
       righe: 'id, sessioneId, [sessioneId+ordine]',
       codaUpload: '++id, tipo',
       impostazioni: 'chiave',
+    });
+    // v2: anagrafiche clienti, dall'export di Easyfatt o create in app.
+    this.version(2).stores({
+      clienti: 'id, origine, partitaIva, codiceFiscale',
     });
   }
 }

@@ -47,6 +47,7 @@ function useSessioniHome() {
 
 export function Home() {
   const prodotti = useLiveQuery(() => db.prodotti.count(), []);
+  const clienti = useLiveQuery(() => db.clienti.count(), []);
   const online = useOnline();
   const { inCorso, ultimoEsito } = useStatoSync();
   const sessioni = useSessioniHome();
@@ -160,9 +161,15 @@ export function Home() {
       <section className="card flex flex-col gap-4 p-4">
         <h2 className="text-base uppercase tracking-wide">Catalogo</h2>
         <StatoRete />
-        <p>
-          <span className="text-2xl font-bold tabular-nums">{formattaNumero(prodotti ?? 0)}</span>{' '}
-          <span className="etichetta">{prodotti === 1 ? 'prodotto' : 'prodotti'} nel telefono</span>
+        <p className="flex flex-wrap gap-x-6 gap-y-1">
+          <span>
+            <span className="text-2xl font-bold tabular-nums">{formattaNumero(prodotti ?? 0)}</span>{' '}
+            <span className="etichetta">{prodotti === 1 ? 'prodotto' : 'prodotti'}</span>
+          </span>
+          <span>
+            <span className="text-2xl font-bold tabular-nums">{formattaNumero(clienti ?? 0)}</span>{' '}
+            <span className="etichetta">{clienti === 1 ? 'cliente' : 'clienti'} nel telefono</span>
+          </span>
         </p>
         <button
           type="button"

@@ -189,6 +189,7 @@ describe('schermata sessione', () => {
       tipo: 'ddt',
       nome: 'Cliente',
       modalita: 'chiedi_quantita',
+      cliente: { nome: 'Rossi srl' },
     });
     await apri(sessione.id);
     await attendi(() => trova('[aria-label="Esci dalla sessione"]') !== null, 'scanner montato');

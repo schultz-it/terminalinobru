@@ -2,13 +2,13 @@ import { useSyncExternalStore } from 'react';
 import { db } from '../db.js';
 import { caricaImpostazioni } from '../impostazioni.js';
 import { invalidaIndice } from '../ricerca/indice.js';
-import { sincronizzaCatalogo, type EsitoSync } from './catalogo.js';
+import { sincronizzaCatalogoEClienti, type EsitoSyncCompleta } from './clienti.js';
 
 /** Stato condiviso della sincronizzazione, letto da `StatoRete` e dalle schermate. */
-export type StatoSync = { inCorso: boolean; ultimoEsito?: EsitoSync };
+export type StatoSync = { inCorso: boolean; ultimoEsito?: EsitoSyncCompleta };
 
 let stato: StatoSync = { inCorso: false };
-let inCorso: Promise<EsitoSync> | undefined;
+let inCorso: Promise<EsitoSyncCompleta> | undefined;
 const ascoltatori = new Set<() => void>();
 
 function aggiorna(nuovo: StatoSync): void {
@@ -20,16 +20,16 @@ function aggiorna(nuovo: StatoSync): void {
  * Avvia la sincronizzazione del catalogo con le impostazioni salvate. Se una è già in corso
  * restituisce quella, così avvio automatico e pulsante non si sovrappongono.
  */
-export function avviaSincronizzazione(): Promise<EsitoSync> {
+export function avviaSincronizzazione(): Promise<EsitoSyncCompleta> {
   if (inCorso) return inCorso;
   aggiorna({ ...stato, inCorso: true });
   inCorso = (async () => {
     const impostazioni = await caricaImpostazioni(db);
-    const esito = await sincronizzaCatalogo({ db, impostazioni });
+    const esito = await sincronizzaCatalogoEClienti({ db, impostazioni });
     if (esito.ok) invalidaIndice();
     return esito;
   })()
-    .catch((): EsitoSync => ({
+    .catch((): EsitoSyncCompleta => ({
       ok: false,
       messaggio: 'Errore imprevisto durante la sincronizzazione.',
     }))

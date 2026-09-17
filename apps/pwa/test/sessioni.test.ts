@@ -168,6 +168,7 @@ describe('chiusura e riapertura', () => {
         note: '  ',
         modalita: 'somma_uno',
         dispositivo: 'Tel 1',
+        cliente: { nome: 'Rossi srl' },
       },
       adesso,
     );

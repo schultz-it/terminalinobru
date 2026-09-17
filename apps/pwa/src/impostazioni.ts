@@ -14,6 +14,9 @@ import type { DatabaseTerminalino } from './db.js';
  */
 export const CHIAVE_CURSORE_CATALOGO = 'cursoreCatalogo';
 
+/** Chiave del cursore dei clienti: l'`aggiornatoIl` dell'ultima risposta di `/api/clienti` (v2). */
+export const CHIAVE_CURSORE_CLIENTI = 'cursoreClienti';
+
 type ChiaveImpostazione = keyof Impostazioni;
 
 const CHIAVI = Object.keys(schemaImpostazioni.shape) as ChiaveImpostazione[];

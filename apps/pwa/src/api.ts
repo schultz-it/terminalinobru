@@ -6,6 +6,8 @@ export class ErroreBridge extends Error {
   constructor(
     messaggio: string,
     readonly stato?: number,
+    /** Il messaggio `errore` del corpo JSON del bridge, da solo, se c'era. */
+    readonly dettaglio?: string,
   ) {
     super(messaggio);
     this.name = 'ErroreBridge';
@@ -71,7 +73,7 @@ export async function chiamaBridge(
       // Corpo non JSON: basta il codice di stato.
     }
     const base = messaggioPerStato(risposta.status);
-    throw new ErroreBridge(dettaglio ? `${base} ${dettaglio}` : base, risposta.status);
+    throw new ErroreBridge(dettaglio ? `${base} ${dettaglio}` : base, risposta.status, dettaglio);
   }
   return risposta;
 }
