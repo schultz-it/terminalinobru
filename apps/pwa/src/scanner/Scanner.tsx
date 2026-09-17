@@ -29,6 +29,13 @@ export type ProprietaScanner = {
   segnapostoManuale?: string;
   /** Contenuto aggiuntivo nel pannello inferiore (la pagina di prova ci mette l'elenco letture). */
   children?: ReactNode;
+  /**
+   * Modalità incorporata, per la schermata sessione: la fotocamera occupa solo la parte alta e
+   * sotto il campo manuale il contenuto (`children`) scorre su sfondo chiaro, a tutta altezza.
+   */
+  incorporato?: boolean;
+  /** Etichetta accessibile del pulsante di chiusura. */
+  etichettaChiudi?: string;
 };
 
 /**
@@ -42,6 +49,8 @@ export function Scanner({
   avviso,
   segnapostoManuale = 'Scrivi il codice',
   children,
+  incorporato = false,
+  etichettaChiudi = 'Chiudi scanner',
 }: ProprietaScanner) {
   const video = useRef<HTMLVideoElement>(null);
   const { impostazioni } = useImpostazioni();
@@ -108,79 +117,97 @@ export function Scanner({
       aria-label={titolo}
       className="fixed inset-0 z-50 flex flex-col bg-nero text-bianco"
     >
-      <video
-        ref={video}
-        muted
-        playsInline
-        aria-hidden
-        className="absolute inset-0 size-full object-cover"
-      />
+      <div
+        className={`relative flex flex-col overflow-hidden ${
+          incorporato ? 'h-[38dvh] shrink-0' : 'min-h-0 flex-1'
+        }`}
+      >
+        <video
+          ref={video}
+          muted
+          playsInline
+          aria-hidden
+          className="absolute inset-0 size-full object-cover"
+        />
 
-      <header className="relative z-10 flex shrink-0 items-center gap-1 bg-nero/50 px-2 pt-[env(safe-area-inset-top)]">
-        <div className="flex h-14 min-w-0 flex-1 items-center gap-1">
-          <h1 className="min-w-0 flex-1 truncate px-2 text-lg tracking-wide uppercase">{titolo}</h1>
-          {torcia.disponibile && (
-            <button
-              type="button"
-              className="flex size-12 items-center justify-center rounded-full active:bg-grafite"
-              aria-label={torcia.accesa ? 'Spegni torcia' : 'Accendi torcia'}
-              aria-pressed={torcia.accesa}
-              onClick={() => void fotocamera.alternaTorcia()}
-            >
-              {torcia.accesa ? <FlashlightOff size={28} /> : <Flashlight size={28} />}
-            </button>
-          )}
-          {fotocamera.fotocamere.length > 1 && (
-            <button
-              type="button"
-              className="flex size-12 items-center justify-center rounded-full active:bg-grafite"
-              aria-label="Cambia fotocamera"
-              onClick={fotocamera.cambiaFotocamera}
-            >
-              <SwitchCamera size={28} />
-            </button>
-          )}
-          <button
-            type="button"
-            className="flex size-12 items-center justify-center rounded-full active:bg-grafite"
-            aria-label="Chiudi scanner"
-            onClick={onChiudi}
-          >
-            <X size={28} />
-          </button>
-        </div>
-      </header>
-
-      {/* La cornice scurisce il video attorno a sé con un contorno enorme, tagliato a quest'area. */}
-      <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center overflow-hidden p-6">
-        {stato.fase === 'problema' ? (
-          <div className="flex max-w-sm flex-col items-center gap-4 text-center" role="alert">
-            <p className="text-base font-semibold">{stato.problema.messaggio}</p>
-            {stato.problema.tipo !== 'non-supportata' && (
+        <header className="relative z-10 flex shrink-0 items-center gap-1 bg-nero/50 px-2 pt-[env(safe-area-inset-top)]">
+          <div className="flex h-14 min-w-0 flex-1 items-center gap-1">
+            <h1 className="min-w-0 flex-1 truncate px-2 text-lg tracking-wide uppercase">
+              {titolo}
+            </h1>
+            {torcia.disponibile && (
               <button
                 type="button"
-                className="pulsante-primario w-full"
-                onClick={fotocamera.riprova}
+                className="flex size-12 items-center justify-center rounded-full active:bg-grafite"
+                aria-label={torcia.accesa ? 'Spegni torcia' : 'Accendi torcia'}
+                aria-pressed={torcia.accesa}
+                onClick={() => void fotocamera.alternaTorcia()}
               >
-                Riprova
+                {torcia.accesa ? <FlashlightOff size={28} /> : <Flashlight size={28} />}
               </button>
             )}
-            <p className="text-sm">Puoi sempre usare il lettore o scrivere il codice qui sotto.</p>
+            {fotocamera.fotocamere.length > 1 && (
+              <button
+                type="button"
+                className="flex size-12 items-center justify-center rounded-full active:bg-grafite"
+                aria-label="Cambia fotocamera"
+                onClick={fotocamera.cambiaFotocamera}
+              >
+                <SwitchCamera size={28} />
+              </button>
+            )}
+            <button
+              type="button"
+              className="flex size-12 items-center justify-center rounded-full active:bg-grafite"
+              aria-label={etichettaChiudi}
+              onClick={onChiudi}
+            >
+              <X size={28} />
+            </button>
           </div>
-        ) : (
-          <div
-            aria-hidden
-            className="aspect-[3/2] w-full max-w-sm rounded-xl border-4 border-giallo outline-[100vmax] outline-nero/50 outline-solid"
-          />
-        )}
-        {stato.fase === 'avvio' && (
-          <p className="absolute text-base font-semibold" role="status">
-            Avvio fotocamera…
-          </p>
-        )}
+        </header>
+
+        {/* La cornice scurisce il video attorno a sé con un contorno enorme, tagliato a quest'area. */}
+        <div
+          className={`relative z-10 flex min-h-0 flex-1 items-center justify-center overflow-hidden ${
+            incorporato ? 'p-3' : 'p-6'
+          }`}
+        >
+          {stato.fase === 'problema' ? (
+            <div className="flex max-w-sm flex-col items-center gap-4 text-center" role="alert">
+              <p className="text-base font-semibold">{stato.problema.messaggio}</p>
+              {stato.problema.tipo !== 'non-supportata' && (
+                <button
+                  type="button"
+                  className="pulsante-primario w-full"
+                  onClick={fotocamera.riprova}
+                >
+                  Riprova
+                </button>
+              )}
+              <p className="text-sm">
+                Puoi sempre usare il lettore o scrivere il codice qui sotto.
+              </p>
+            </div>
+          ) : (
+            <div
+              aria-hidden
+              className="aspect-[3/2] max-h-full w-full max-w-sm rounded-xl border-4 border-giallo outline-[100vmax] outline-nero/50 outline-solid"
+            />
+          )}
+          {stato.fase === 'avvio' && (
+            <p className="absolute text-base font-semibold" role="status">
+              Avvio fotocamera…
+            </p>
+          )}
+        </div>
       </div>
 
-      <div className="relative z-10 flex shrink-0 flex-col gap-2 bg-nero pb-[env(safe-area-inset-bottom)]">
+      <div
+        className={`relative z-10 flex shrink-0 flex-col gap-2 bg-nero ${
+          incorporato ? '' : 'pb-[env(safe-area-inset-bottom)]'
+        }`}
+      >
         {avviso && <Avviso tipo={avviso.tipo}>{avviso.testo}</Avviso>}
         <form
           className="flex gap-2 px-4 pt-2"
@@ -215,8 +242,13 @@ export function Scanner({
             ? 'Inquadra il codice nella cornice. Lettore Bluetooth pronto.'
             : 'Lettore Bluetooth pronto.'}
         </p>
-        {children}
+        {!incorporato && children}
       </div>
+      {incorporato && (
+        <div className="min-h-0 flex-1 overflow-y-auto bg-grigio-sfondo pb-[env(safe-area-inset-bottom)] text-grafite">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

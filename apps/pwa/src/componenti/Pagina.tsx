@@ -6,12 +6,15 @@ import { useNavigate } from 'react-router';
 export function Pagina({
   titolo,
   indietro,
+  onIndietro,
   azione,
   children,
 }: {
   titolo: string;
   /** Mostra il pulsante indietro, che torna alla pagina precedente o a questo percorso. */
   indietro?: string;
+  /** Sostituisce la navigazione del pulsante indietro, per le viste interne a una schermata. */
+  onIndietro?: () => void;
   azione?: ReactNode;
   children: ReactNode;
 }) {
@@ -26,6 +29,7 @@ export function Pagina({
               aria-label="Indietro"
               className="flex size-12 items-center justify-center rounded-full active:bg-giallo-scuro"
               onClick={() => {
+                if (onIndietro) return onIndietro();
                 if (window.history.state?.idx > 0) void naviga(-1);
                 else void naviga(indietro);
               }}

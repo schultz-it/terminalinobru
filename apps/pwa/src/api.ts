@@ -34,22 +34,27 @@ function messaggioPerStato(stato: number): string {
 }
 
 /**
- * GET autenticato verso il bridge, con risposta JSON validata dallo schema.
- * Ogni problema diventa un `ErroreBridge` con testo in italiano.
+ * Chiamata autenticata verso il bridge. Restituisce la risposta solo se ha codice 2xx; ogni
+ * problema diventa un `ErroreBridge` con testo in italiano. Un errore senza `stato` vuol dire
+ * che il bridge non è stato raggiunto (rete assente o indirizzo sbagliato).
  */
-export async function richiestaBridge<T>(
+export async function chiamaBridge(
   connessione: Connessione,
   percorso: string,
-  schema: z.ZodType<T>,
+  init: RequestInit = {},
   recupera: typeof fetch = fetch,
-): Promise<T> {
+): Promise<Response> {
   if (connessione.token.trim() === '') {
     throw new ErroreBridge('Manca il token: inseriscilo nelle impostazioni.');
   }
+  const intestazioni = new Headers(init.headers);
+  intestazioni.set('Authorization', `Bearer ${connessione.token.trim()}`);
+  intestazioni.set('Accept', 'application/json');
   let risposta: Response;
   try {
     risposta = await recupera(indirizzoBridge(connessione.urlBridge, percorso), {
-      headers: { Authorization: `Bearer ${connessione.token.trim()}`, Accept: 'application/json' },
+      ...init,
+      headers: intestazioni,
     });
   } catch {
     throw new ErroreBridge(
@@ -68,6 +73,39 @@ export async function richiestaBridge<T>(
     const base = messaggioPerStato(risposta.status);
     throw new ErroreBridge(dettaglio ? `${base} ${dettaglio}` : base, risposta.status);
   }
+  return risposta;
+}
+
+/** POST autenticato con corpo JSON. La risposta è restituita senza leggerne il corpo. */
+export function inviaJsonAlBridge(
+  connessione: Connessione,
+  percorso: string,
+  corpo: unknown,
+  recupera: typeof fetch = fetch,
+): Promise<Response> {
+  return chiamaBridge(
+    connessione,
+    percorso,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(corpo),
+    },
+    recupera,
+  );
+}
+
+/**
+ * GET autenticato verso il bridge, con risposta JSON validata dallo schema.
+ * Ogni problema diventa un `ErroreBridge` con testo in italiano.
+ */
+export async function richiestaBridge<T>(
+  connessione: Connessione,
+  percorso: string,
+  schema: z.ZodType<T>,
+  recupera: typeof fetch = fetch,
+): Promise<T> {
+  const risposta = await chiamaBridge(connessione, percorso, {}, recupera);
   let corpo: unknown;
   try {
     corpo = await risposta.json();

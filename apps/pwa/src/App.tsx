@@ -8,8 +8,11 @@ import { Consultazione } from './pagine/Consultazione.js';
 import { Home } from './pagine/Home.js';
 import { Impostazioni } from './pagine/Impostazioni.js';
 import { SchedaProdotto } from './pagine/SchedaProdotto.js';
-import { Esportazioni, Sessione } from './pagine/Segnaposto.js';
+import { NuovaSessione } from './pagine/NuovaSessione.js';
+import { Esportazioni } from './pagine/Segnaposto.js';
+import { Sessione } from './pagine/Sessione.js';
 import { serveSyncAutomatica } from './sync/catalogo.js';
+import { avviaServizioCoda } from './sync/coda.js';
 import { avviaSincronizzazione } from './sync/statoSync.js';
 
 /** Pagina di prova dello scanner: esiste solo in sviluppo e resta fuori dalla build. */
@@ -37,6 +40,8 @@ function useSyncAllAvvio() {
 
 export function App() {
   useSyncAllAvvio();
+  // Coda di invio al bridge: riprova all'avvio e ogni volta che torna la rete.
+  useEffect(() => avviaServizioCoda(), []);
   return (
     <BrowserRouter>
       <Routes>
@@ -45,6 +50,7 @@ export function App() {
           <Route path="consulta" element={<Consultazione />} />
           <Route path="consulta/abbina/:barcode" element={<AbbinaBarcode />} />
           <Route path="consulta/:codice" element={<SchedaProdotto />} />
+          <Route path="sessioni/nuova" element={<NuovaSessione />} />
           <Route path="sessioni/:id" element={<Sessione />} />
           <Route path="esportazioni" element={<Esportazioni />} />
           <Route path="impostazioni" element={<Impostazioni />} />

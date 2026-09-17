@@ -357,7 +357,14 @@ gira Easyfatt, e la gestione dei barcode abbinati in app.
 - Sezione "Barcode abbinati in app": conteggio da `/api/barcode/nuovi.csv`, pulsante di download
   del CSV, testo che spiega come riportarli in Easyfatt.
 - Sync della coda: se ci sono elementi in `codaUpload` mostra un avviso con pulsante "Invia ora".
-- Test sulle funzioni pure (formattazione nomi file, filtri).
+- Allineamento dello stato locale (`src/sync/sessioni.ts`): all'avvio della PWA, dopo ogni giro
+  della coda e all'apertura di `/esportazioni`, `GET /api/sessioni` e aggiornamento dello stato
+  delle sessioni locali non aperte (`chiusa` → `esportata`/`importata`, `esportata` → `chiusa` se
+  riportata dal PC). Solo lettura verso il bridge; le sessioni aperte sul telefono non si toccano.
+  Serve perché oggi sul telefono le sessioni restano "chiusa" per sempre: la pulizia delle
+  importate a 90 giorni (T07) non trova nulla e si può riaprire una sessione già esportata
+  (`transizioneStato` la bloccherà da solo, una volta allineato lo stato).
+- Test sulle funzioni pure (formattazione nomi file, filtri, allineamento degli stati).
 
 Criteri di accettazione: da Chrome desktop si scarica il file e il nome corrisponde a quello
 impostato dal bridge; il cambio stato si riflette subito nell'elenco.
