@@ -78,7 +78,7 @@ Regole:
 Vite + React + TypeScript + Tailwind. Installabile su Android da Chrome. Offline-first:
 
 - **Dexie** tiene catalogo, barcode, sessioni, righe e impostazioni in IndexedDB. Tutto funziona senza rete; il bridge serve solo a sincronizzare.
-- **Sync catalogo** manuale dalla schermata Impostazioni e automatica all'avvio se online e passate più di N ore. Delta tramite `dal`.
+- **Sync catalogo** manuale dalla schermata Impostazioni e automatica all'avvio se online e passate più di 6 ore. Delta tramite `dal`.
 - **Upload sessioni** quando l'utente chiude una sessione; se offline resta in coda e riprova alla prossima apertura.
 - **Ricerca** in memoria su indice costruito dai prodotti in Dexie: normalizzazione senza accenti e maiuscole, match per token su codice e descrizione, priorità ai prefissi di codice. Il catalogo atteso è di poche migliaia di righe, non serve un motore esterno.
 - **Scanner**: componente unico che accetta input da tre sorgenti e le espone come evento `codiceLetto`:

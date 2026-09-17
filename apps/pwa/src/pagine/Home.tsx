@@ -53,7 +53,7 @@ export function Home() {
         <StatoRete />
         <p>
           <span className="text-2xl font-bold tabular-nums">{formattaNumero(prodotti ?? 0)}</span>{' '}
-          <span className="etichetta">prodotti nel telefono</span>
+          <span className="etichetta">{prodotti === 1 ? 'prodotto' : 'prodotti'} nel telefono</span>
         </p>
         <button
           type="button"
