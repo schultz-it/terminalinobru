@@ -17,7 +17,7 @@ e test approfonditi, `low` per documentazione.
 | T01 | Scaffold monorepo e CI | Sonnet 5 | medium | fatto | [#1](https://github.com/schultz-it/TerminalinoBru/pull/1) |
 | T02 | Libreria `core` ed `easyfatt` | Opus 5 | high | fatto | [#2](https://github.com/schultz-it/TerminalinoBru/pull/2) |
 | T03 | Bridge: schema, auth, catalogo | Opus 5 | high | fatto | [#3](https://github.com/schultz-it/TerminalinoBru/pull/3) |
-| T04 | Bridge: sessioni e barcode | Sonnet 5 | high | da fare | |
+| T04 | Bridge: sessioni e barcode | Sonnet 5 | high | fatto | [#4](https://github.com/schultz-it/TerminalinoBru/pull/4) |
 | T05 | PWA: base, sync, ricerca, consultazione | Opus 5 | medium | da fare | |
 | T06 | PWA: scanner | Opus 5 | high | da fare | |
 | T07 | PWA: sessioni ed export | Opus 5 | high | da fare | |
