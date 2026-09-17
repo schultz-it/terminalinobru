@@ -185,7 +185,9 @@ describe('servizio della coda', () => {
     db = nuovoDb();
     await salvaImpostazioni(db, connessione);
     let online = false;
-    const { recupera, chiamate } = fetchFinto(creata(), creata());
+    // Dopo ogni giro il servizio allinea anche gli stati con `GET /api/sessioni`: qui ne servono
+    // due, uno per il giro che invia la sessione e uno per quello (vuoto) innescato subito dopo.
+    const { recupera, chiamate } = fetchFinto(creata(), Response.json([]), Response.json([]));
     const servizio = creaServizioCoda({ db, recupera, online: () => online });
     const finestra = new EventTarget();
     const smetti = avviaServizioCoda(servizio, finestra as unknown as Window);
@@ -205,7 +207,7 @@ describe('servizio della coda', () => {
     await manuale;
     await attendiFermo(servizio);
 
-    expect(chiamate).toHaveLength(1);
+    expect(chiamate).toHaveLength(3);
     expect(await db.codaUpload.count()).toBe(0);
     expect(servizio.stato()).toEqual({ inCorso: false, ultimoEsito: { inviate: 0, rimaste: 0 } });
 
@@ -213,7 +215,7 @@ describe('servizio della coda', () => {
     await sessioneChiusa('Dopo');
     finestra.dispatchEvent(new Event('online'));
     expect(servizio.stato().inCorso).toBe(false);
-    expect(chiamate).toHaveLength(1);
+    expect(chiamate).toHaveLength(3);
   });
 
   it('una sessione chiusa durante un giro parte da sola nel giro successivo', async () => {
@@ -242,7 +244,8 @@ describe('servizio della coda', () => {
     // Finito il primo giro ne parte un altro da solo, senza premere niente.
     expect(servizio.stato().inCorso).toBe(true);
     await attendiFermo(servizio);
-    expect(chiamate).toHaveLength(2);
+    // 2 giri, ciascuno con la POST della sessione e la GET di allineamento degli stati.
+    expect(chiamate).toHaveLength(4);
     expect(await db.codaUpload.count()).toBe(0);
     expect(servizio.stato().inCorso).toBe(false);
   });
