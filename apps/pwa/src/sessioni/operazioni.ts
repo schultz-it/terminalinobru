@@ -1,11 +1,14 @@
 import {
   arrotondaQuantita,
+  schemaClienteDocumento,
   transizioneStato,
+  type ClienteDocumento,
   type ModalitaScansione,
   type Riga,
   type Sessione,
   type TipoSessione,
 } from '@terminalinobru/core';
+import { chiamaBridge, ErroreBridge, messaggioErrore, type Connessione } from '../api.js';
 import type { DatabaseTerminalino, SessioneLocale } from '../db.js';
 import { generaUuid } from './modello.js';
 import { quantitaSalvabile } from './quantita.js';
@@ -27,7 +30,27 @@ export type DatiNuovaSessione = {
   note?: string;
   modalita: ModalitaScansione;
   dispositivo?: string;
+  /** Obbligatorio per i DDT: copia completa del cliente scelto o creato sul telefono. */
+  cliente?: ClienteDocumento;
 };
+
+/** Messaggio per un DDT senza cliente, in creazione e in chiusura. */
+const MANCA_CLIENTE = 'Scegli il cliente del DDT.';
+
+/**
+ * Controlla i dati di una nuova sessione prima di crearla. Restituisce il messaggio del primo
+ * problema, oppure `undefined` se è tutto a posto.
+ */
+export function validaNuovaSessione(dati: DatiNuovaSessione): string | undefined {
+  if (dati.nome.trim() === '') return 'Dai un nome alla sessione.';
+  if (dati.tipo === 'ddt') {
+    if (dati.cliente === undefined) return MANCA_CLIENTE;
+    if (!schemaClienteDocumento.safeParse(dati.cliente).success) {
+      return 'I dati del cliente non sono validi: correggili o scegline un altro.';
+    }
+  }
+  return undefined;
+}
 
 /** Crea una sessione aperta sul telefono. */
 export async function creaSessione(
@@ -36,8 +59,9 @@ export async function creaSessione(
   adesso: Date = new Date(),
   generaId: () => string = generaUuid,
 ): Promise<SessioneLocale> {
+  const errore = validaNuovaSessione(dati);
+  if (errore !== undefined) throw new ErroreSessione(errore);
   const nome = dati.nome.trim();
-  if (nome === '') throw new ErroreSessione('Dai un nome alla sessione.');
   const note = dati.note?.trim();
   const dispositivo = dati.dispositivo?.trim();
   const sessione: SessioneLocale = {
@@ -49,6 +73,8 @@ export async function creaSessione(
     creataIl: adesso.toISOString(),
     ...(note ? { note } : {}),
     ...(dispositivo ? { dispositivo } : {}),
+    // Solo i DDT portano il cliente: negli altri tipi Easyfatt non lo userebbe.
+    ...(dati.tipo === 'ddt' && dati.cliente ? { cliente: dati.cliente } : {}),
   };
   await db.sessioni.add(sessione);
   return sessione;
@@ -67,6 +93,22 @@ function controllaQuantita(quantita: number): void {
   if (!quantitaSalvabile(quantita)) {
     throw new ErroreSessione('Quantità non valida: deve essere un numero non negativo.');
   }
+}
+
+/** Cambia il cliente di un DDT aperto (per esempio un DDT nato senza cliente prima della v2). */
+export async function cambiaClienteSessione(
+  db: DatabaseTerminalino,
+  id: string,
+  cliente: ClienteDocumento,
+): Promise<void> {
+  if (!schemaClienteDocumento.safeParse(cliente).success) {
+    throw new ErroreSessione('I dati del cliente non sono validi: correggili o scegline un altro.');
+  }
+  await db.transaction('rw', db.sessioni, async () => {
+    const sessione = await sessioneAperta(db, id);
+    if (sessione.tipo !== 'ddt') throw new ErroreSessione('Solo i DDT hanno un cliente.');
+    await db.sessioni.update(id, { cliente });
+  });
 }
 
 /** Righe di una sessione nell'ordine di inserimento. */
@@ -165,6 +207,10 @@ export async function chiudiSessione(
     if (sessione.stato !== 'aperta' || !transizioneStato(sessione.stato, 'chiusa')) {
       throw new ErroreSessione('La sessione non è aperta.');
     }
+    // Il bridge rifiuta i DDT senza cliente: Easyfatt non saprebbe a chi intestare l'ordine.
+    if (sessione.tipo === 'ddt' && sessione.cliente === undefined) {
+      throw new ErroreSessione(`${MANCA_CLIENTE} Senza cliente il DDT non si può chiudere.`);
+    }
     // Il bridge rifiuta le sessioni senza righe: meglio dirlo subito che lasciarle in coda.
     if ((await db.righe.where('sessioneId').equals(id).count()) === 0) {
       throw new ErroreSessione('La sessione è vuota: aggiungi almeno una riga prima di chiuderla.');
@@ -220,20 +266,9 @@ export async function sessioneCompleta(
   return { ...daSpedire, righe: await righeSessione(db, id) };
 }
 
-/**
- * Cancella dal telefono una sessione che il bridge non ha mai ricevuto: aperta oppure chiusa con
- * l'invio ancora in coda. Una sessione già arrivata al bridge non si cancella da qui, altrimenti
- * il PC continuerebbe a vederla (la cancellazione dal bridge arriva con la v2).
- */
-export async function cancellaSessione(db: DatabaseTerminalino, id: string): Promise<void> {
+/** Cancella sessione, righe e invio in coda dal solo telefono, senza controlli. */
+async function cancellaSoloSulTelefono(db: DatabaseTerminalino, id: string): Promise<void> {
   await db.transaction('rw', db.sessioni, db.righe, db.codaUpload, async () => {
-    const sessione = await db.sessioni.get(id);
-    if (!sessione) return;
-    if (sessione.inviataIl !== undefined) {
-      throw new ErroreSessione(
-        'La sessione è già sul bridge: per ora si cancella solo dal PC, oppure riaprila e correggila.',
-      );
-    }
     await db.righe.where('sessioneId').equals(id).delete();
     await db.codaUpload
       .where('tipo')
@@ -242,6 +277,65 @@ export async function cancellaSessione(db: DatabaseTerminalino, id: string): Pro
       .delete();
     await db.sessioni.delete(id);
   });
+}
+
+/**
+ * Cancella dal telefono una sessione che il bridge non ha mai ricevuto: aperta oppure chiusa con
+ * l'invio ancora in coda. Una sessione già arrivata al bridge passa da
+ * {@link cancellaSessioneOvunque}, altrimenti il PC continuerebbe a vederla.
+ */
+export async function cancellaSessione(db: DatabaseTerminalino, id: string): Promise<void> {
+  await db.transaction('rw', db.sessioni, db.righe, db.codaUpload, async () => {
+    const sessione = await db.sessioni.get(id);
+    if (!sessione) return;
+    if (sessione.inviataIl !== undefined) {
+      throw new ErroreSessione(
+        'La sessione è già sul bridge: va cancellata anche lì, serve la connessione.',
+      );
+    }
+    await cancellaSoloSulTelefono(db, id);
+  });
+}
+
+/**
+ * Cancella una sessione ovunque sia (docs/DECISIONI.md punto 57). Se il bridge non l'ha mai
+ * ricevuta (`inviataIl` assente) basta il telefono. Altrimenti chiama `DELETE /api/sessioni/:id`:
+ * con `204` cancella anche sul telefono; con `404` il bridge non l'ha più e si cancella lo stesso;
+ * con `409` Easyfatt l'ha già scaricata e l'errore riporta il messaggio del bridge. Senza rete o
+ * con altri errori la sessione resta dov'è.
+ */
+export async function cancellaSessioneOvunque(
+  db: DatabaseTerminalino,
+  connessione: Connessione,
+  id: string,
+  recupera: typeof fetch = fetch,
+): Promise<void> {
+  const sessione = await db.sessioni.get(id);
+  if (!sessione) return;
+  if (sessione.inviataIl === undefined) {
+    await cancellaSessione(db, id);
+    return;
+  }
+  try {
+    await chiamaBridge(
+      connessione,
+      `/api/sessioni/${encodeURIComponent(id)}`,
+      { method: 'DELETE' },
+      recupera,
+    );
+  } catch (errore) {
+    if (errore instanceof ErroreBridge && errore.stato === 404) {
+      await cancellaSoloSulTelefono(db, id);
+      return;
+    }
+    if (errore instanceof ErroreBridge && errore.stato === 409) {
+      throw new ErroreSessione(
+        errore.dettaglio ?? 'Easyfatt ha già scaricato la sessione: non si può più cancellare.',
+      );
+    }
+    throw new ErroreSessione(`Sessione non cancellata. ${messaggioErrore(errore)}`);
+  }
+  await cancellaSoloSulTelefono(db, id);
 }
 
 /** Sessioni importate da più di {@link GIORNI_CONSERVAZIONE_IMPORTATE} giorni. */

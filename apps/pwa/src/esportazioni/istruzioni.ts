@@ -10,9 +10,10 @@ export const ISTRUZIONI_IMPORTAZIONE: Record<TipoSessione, string> = {
     'Causale predefinita «Rettifica giacenza». Per un inventario completo spunta anche ' +
     '«Azzera giacenza dei prodotti non in elenco».',
   ddt:
-    'Nuovo documento > righe > Utilità > Importa da terminale portatile, dopo aver scelto il ' +
-    'cliente: il prezzo applicato è quello del suo listino. Lo scarico avviene al salvataggio ' +
-    'del documento.',
+    'Il DDT arriva da solo come ordine del cliente: Strumenti > Scarica ordini da e-Commerce, ' +
+    'poi apri l’ordine e usa «Genera da > DDT». Lo scarico di magazzino avviene al salvataggio ' +
+    'del DDT. Il file terminale.txt resta come ripiego: Nuovo documento > righe > Utilità > ' +
+    'Importa da terminale portatile, dove disponibile.',
   carico:
     'Nuovo Arrivo merce > Utilità > Importa da terminale portatile. Il carico avviene al ' +
     'salvataggio.',

@@ -127,6 +127,7 @@ describe('allineaSessioniLocali', () => {
       tipo: 'ddt',
       nome: 'Consegna',
       modalita: 'somma_uno',
+      cliente: { nome: 'Rossi srl' },
     });
     await aggiungiRiga(db, sessione.id, { codiceProdotto: 'A1', quantita: 1 });
     await chiudiSessione(db, sessione.id);
@@ -172,6 +173,43 @@ describe('allineaSessioniLocali', () => {
     });
     expect(secondo).toEqual({ ok: true, aggiornate: 1 });
     expect((await db.sessioni.get(sessione.id))?.stato).toBe('esportata');
+  });
+
+  it("recupera dal bridge il numero d'ordine se la risposta della POST era andata persa", async () => {
+    db = nuovoDb();
+    const sessione = await creaSessione(db, {
+      tipo: 'ddt',
+      nome: 'Consegna',
+      modalita: 'somma_uno',
+      cliente: { nome: 'Rossi srl' },
+    });
+    await aggiungiRiga(db, sessione.id, { codiceProdotto: 'A1', quantita: 1 });
+    await chiudiSessione(db, sessione.id);
+    await db.codaUpload.clear();
+    const { recupera } = fetchFinto(
+      Response.json([
+        {
+          id: sessione.id,
+          tipo: 'ddt',
+          nome: 'Consegna',
+          stato: 'chiusa',
+          modalita: 'somma_uno',
+          creataIl: sessione.creataIl,
+          chiusaIl: '2026-09-17T09:00:00.000Z',
+          ricevutaIl: '2026-09-17T09:00:01.000Z',
+          conteggioRighe: 1,
+          sommaQuantita: 1,
+          cliente: { nome: 'Rossi srl' },
+          numeroDocumento: 7,
+        },
+      ]),
+    );
+    const esito = await allineaSessioniLocali({ db, impostazioni: connessione, recupera });
+    expect(esito).toEqual({ ok: true, aggiornate: 1 });
+    expect(await db.sessioni.get(sessione.id)).toMatchObject({
+      stato: 'chiusa',
+      numeroDocumento: 7,
+    });
   });
 
   it('non lancia se il bridge non risponde: torna un errore leggibile', async () => {

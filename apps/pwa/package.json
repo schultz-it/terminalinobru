@@ -17,6 +17,7 @@
     "@terminalinobru/easyfatt": "workspace:*",
     "barcode-detector": "^3.2.2",
     "dexie": "^4.4.6",
+    "fflate": "^0.8.3",
     "lucide-react": "^1.46.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

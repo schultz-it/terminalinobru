@@ -43,6 +43,8 @@ export type {
 
 /** Pulisce e valida i dati di un cliente, con un messaggio in italiano per ogni campo errato. */
 export { validaCliente } from './cliente.js';
+/** Campi di un'anagrafica che finiscono nel documento, senza quelli solo del telefono. */
+export { clienteDocumento } from './cliente.js';
 export type { CampoCliente, DatiCliente, EsitoValidazioneCliente } from './cliente.js';
 
 /** Somma le quantità per codice prodotto, nell'ordine di prima comparsa. */
@@ -60,6 +62,12 @@ export { cercaProdotti } from './ricerca.js';
 /** Limite di risultati usato quando il chiamante non ne indica uno. */
 export { LIMITE_RICERCA_DEFAULT } from './ricerca.js';
 export type { IndiceRicerca, VoceIndice } from './ricerca.js';
+
+/** Costruisce l'indice di ricerca dei clienti non eliminati. */
+export { costruisciIndiceClienti } from './ricerca-clienti.js';
+/** Cerca i clienti per nome, codice o partita IVA, in AND sui token della query. */
+export { cercaClienti } from './ricerca-clienti.js';
+export type { IndiceClienti, VoceIndiceClienti } from './ricerca-clienti.js';
 
 /** Dice se il passaggio di stato `da → a` di una sessione è ammesso. */
 export { transizioneStato } from './stato.js';

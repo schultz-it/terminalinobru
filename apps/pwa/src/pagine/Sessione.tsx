@@ -1,6 +1,20 @@
-import { arrotondaQuantita, type Prodotto, type Riga } from '@terminalinobru/core';
+import {
+  arrotondaQuantita,
+  type ClienteDocumento,
+  type Prodotto,
+  type Riga,
+} from '@terminalinobru/core';
 import { ErroreFileTerminale } from '@terminalinobru/easyfatt';
-import { CheckCheck, Pencil, RotateCcw, Search, Send, Share2, Trash2 } from 'lucide-react';
+import {
+  CheckCheck,
+  Pencil,
+  RotateCcw,
+  Search,
+  Send,
+  Share2,
+  Trash2,
+  UserRound,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { Avviso } from '../componenti/Avviso.js';
@@ -10,6 +24,8 @@ import { FoglioQuantita } from '../componenti/FoglioQuantita.js';
 import { Pagina } from '../componenti/Pagina.js';
 import { Riepilogo } from '../componenti/Riepilogo.js';
 import { RicercaProdotto } from '../componenti/RicercaProdotto.js';
+import { SceltaCliente } from '../componenti/SceltaCliente.js';
+import { SchedaCliente } from '../componenti/SchedaCliente.js';
 import { db, type SessioneLocale } from '../db.js';
 import { formattaDataOra, formattaNumero } from '../formato.js';
 import { useImpostazioni } from '../hooks/useImpostazioni.js';
@@ -17,11 +33,17 @@ import { useLiveQuery } from '../hooks/useLiveQuery.js';
 import { risolviCodice } from '../scanner/risolvi.js';
 import { Scanner, type EsitoLettura, type SorgenteLettura } from '../scanner/Scanner.js';
 import { condividiFileTerminale } from '../sessioni/file.js';
-import { ETICHETTE_MODALITA, ETICHETTE_TIPO } from '../sessioni/modello.js';
+import {
+  DESCRIZIONI_STATO_DDT,
+  ETICHETTE_MODALITA,
+  ETICHETTE_TIPO,
+  etichettaOrdine,
+} from '../sessioni/modello.js';
 import {
   aggiungiRiga,
+  cambiaClienteSessione,
   cancellaRiga,
-  cancellaSessione,
+  cancellaSessioneOvunque,
   chiudiSessione,
   ErroreSessione,
   modificaQuantita,
@@ -112,7 +134,11 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   const [erroreChiusura, setErroreChiusura] = useState<string>();
   const [chiusura, setChiusura] = useState(false);
   const [confermaCancella, setConfermaCancella] = useState(false);
+  const [sceltaCliente, setSceltaCliente] = useState(false);
+  const [cancellazione, setCancellazione] = useState(false);
+  const { impostazioni } = useImpostazioni();
   const inventario = sessione.tipo === 'inventario';
+  const ddt = sessione.tipo === 'ddt';
 
   const totali = useMemo(() => {
     const mappa = new Map<string, number>();
@@ -125,7 +151,11 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
 
   // Le letture arrivano dallo scanner anche con un foglio aperto: servono i valori correnti.
   const sovrapposto =
-    foglio !== undefined || ricerca !== undefined || daCancellare !== undefined || confermaCancella;
+    foglio !== undefined ||
+    ricerca !== undefined ||
+    daCancellare !== undefined ||
+    confermaCancella ||
+    sceltaCliente;
   const sovrappostoRef = useRef(sovrapposto);
   sovrappostoRef.current = sovrapposto;
 
@@ -186,7 +216,8 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   }, [posizione, naviga, inserisci]);
 
   const esci = () => {
-    if (confermaCancella) setConfermaCancella(false);
+    if (sceltaCliente) setSceltaCliente(false);
+    else if (confermaCancella) setConfermaCancella(false);
     else if (daCancellare) setDaCancellare(undefined);
     else if (foglio) setFoglio(undefined);
     else if (ricerca) setRicerca(undefined);
@@ -223,11 +254,24 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   }
 
   async function cancella() {
+    if (!impostazioni) return;
+    setCancellazione(true);
     try {
-      await cancellaSessione(db, sessione.id);
+      await cancellaSessioneOvunque(db, impostazioni, sessione.id);
       void naviga('/', { replace: true });
     } catch (errore) {
       setConfermaCancella(false);
+      setCancellazione(false);
+      setAvviso({ tipo: 'errore', testo: messaggio(errore) });
+    }
+  }
+
+  async function scegliCliente(cliente: ClienteDocumento) {
+    setSceltaCliente(false);
+    try {
+      await cambiaClienteSessione(db, sessione.id, cliente);
+      setAvviso(undefined);
+    } catch (errore) {
       setAvviso({ tipo: 'errore', testo: messaggio(errore) });
     }
   }
@@ -261,6 +305,18 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
           <p className="etichetta">{ETICHETTE_TIPO[sessione.tipo]}</p>
           <h2 className="text-xl break-words">{sessione.nome}</h2>
         </div>
+        {ddt && (
+          <section aria-label="Cliente" className="card flex items-center gap-3 p-4">
+            <UserRound size={24} className="shrink-0" />
+            {sessione.cliente ? (
+              <SchedaCliente cliente={sessione.cliente} />
+            ) : (
+              <p className="font-semibold text-rosso">
+                Manca il cliente: torna alla sessione e sceglilo.
+              </p>
+            )}
+          </section>
+        )}
         <Riepilogo
           tipo={sessione.tipo}
           riepilogo={calcolaRiepilogo(sessione.tipo, righe, prodotti)}
@@ -268,7 +324,7 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
         <button
           type="button"
           className="pulsante-primario"
-          disabled={chiusura || righe.length === 0}
+          disabled={chiusura || righe.length === 0 || (ddt && !sessione.cliente)}
           onClick={() => void chiudi()}
         >
           <CheckCheck size={20} />
@@ -318,6 +374,29 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
             Cerca prodotto
           </button>
         </div>
+
+        {ddt && (
+          <section
+            aria-label="Cliente"
+            className={`card flex items-center gap-3 p-3 ${sessione.cliente ? '' : 'border-2 border-rosso'}`}
+          >
+            <UserRound size={24} className="shrink-0" />
+            <div className="min-w-0 flex-1">
+              {sessione.cliente ? (
+                <SchedaCliente cliente={sessione.cliente} />
+              ) : (
+                <p className="font-semibold text-rosso">Manca il cliente del DDT</p>
+              )}
+            </div>
+            <button
+              type="button"
+              className="pulsante-secondario shrink-0"
+              onClick={() => setSceltaCliente(true)}
+            >
+              {sessione.cliente ? 'Cambia' : 'Scegli'}
+            </button>
+          </section>
+        )}
 
         {ultima ? (
           <section
@@ -453,19 +532,30 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
         />
       )}
 
+      {sceltaCliente && (
+        <SceltaCliente
+          onChiudi={() => setSceltaCliente(false)}
+          onScegli={(cliente) => void scegliCliente(cliente)}
+        />
+      )}
+
       {confermaCancella && (
         <Dialogo
           titolo="Cancellare la sessione?"
           etichettaConferma="Cancella sessione"
           distruttivo
+          inCorso={cancellazione}
           onConferma={() => void cancella()}
           onAnnulla={() => setConfermaCancella(false)}
         >
           <p>
             <strong className="break-words">{sessione.nome}</strong>
             {righe.length > 0
-              ? ` e le sue ${righe.length} ${righe.length === 1 ? 'riga' : 'righe'} spariscono dal telefono.`
-              : ' sparisce dal telefono.'}{' '}
+              ? ` e le sue ${righe.length} ${righe.length === 1 ? 'riga' : 'righe'} spariscono dal telefono`
+              : ' sparisce dal telefono'}
+            {sessione.inviataIl === undefined
+              ? '.'
+              : ' e dal bridge, dove era già arrivata: serve la connessione.'}{' '}
             Non si può annullare.
           </p>
         </Dialogo>
@@ -508,6 +598,7 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
   const [confermaRiapri, setConfermaRiapri] = useState(false);
   const [confermaCancella, setConfermaCancella] = useState(false);
   const [condivisione, setCondivisione] = useState(false);
+  const [cancellazione, setCancellazione] = useState(false);
   const riepilogo = useMemo(
     () => calcolaRiepilogo(sessione.tipo, righe, prodotti),
     [sessione.tipo, righe, prodotti],
@@ -530,11 +621,14 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
   }
 
   async function cancella() {
+    if (!impostazioni) return;
+    setCancellazione(true);
     try {
-      await cancellaSessione(db, sessione.id);
+      await cancellaSessioneOvunque(db, impostazioni, sessione.id);
       void naviga('/', { replace: true });
     } catch (errore) {
       setConfermaCancella(false);
+      setCancellazione(false);
       setMessaggioAzione({ tipo: 'errore', testo: messaggio(errore) });
     }
   }
@@ -576,12 +670,27 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
           Creata {formattaDataOra(sessione.creataIl)} · chiusa{' '}
           {formattaDataOra(sessione.chiusaIl, '—')}
         </p>
+        {sessione.tipo === 'ddt' && sessione.numeroDocumento !== undefined && (
+          <p className="font-titolo text-lg font-bold">
+            {etichettaOrdine(sessione.numeroDocumento)}
+          </p>
+        )}
+        {sessione.tipo === 'ddt' && sessione.stato !== 'aperta' && sessione.inviataIl && (
+          <p className="etichetta">{DESCRIZIONI_STATO_DDT[sessione.stato]}</p>
+        )}
         {sessione.dispositivo && <p className="etichetta">Dispositivo: {sessione.dispositivo}</p>}
         {sessione.note && <p className="mt-1 whitespace-pre-wrap">{sessione.note}</p>}
         {sessione.stato === 'chiusa' && voceCoda === null && (
           <p className="mt-1 font-semibold text-verde">Inviata al bridge.</p>
         )}
       </section>
+
+      {sessione.tipo === 'ddt' && sessione.cliente && (
+        <section aria-label="Cliente" className="card flex items-center gap-3 p-4">
+          <UserRound size={24} className="shrink-0" />
+          <SchedaCliente cliente={sessione.cliente} />
+        </section>
+      )}
 
       {voceCoda && (
         <button
@@ -616,8 +725,8 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
           Riapri sessione
         </button>
       )}
-      {/* Cancellabile solo finché il bridge non l'ha ricevuta: dopo, resta visibile al PC. */}
-      {sessione.inviataIl === undefined && (
+      {/* Dopo lo scarico di Easyfatt il bridge rifiuta la cancellazione: il pulsante sparisce. */}
+      {sessione.stato === 'chiusa' && (
         <button
           type="button"
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-rosso bg-bianco px-4 font-semibold text-rosso active:bg-grigio-sfondo"
@@ -635,12 +744,24 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
           titolo="Cancellare la sessione?"
           etichettaConferma="Cancella sessione"
           distruttivo
+          inCorso={cancellazione}
           onConferma={() => void cancella()}
           onAnnulla={() => setConfermaCancella(false)}
         >
           <p>
-            <strong className="break-words">{sessione.nome}</strong> non è ancora arrivata al
-            bridge: sparisce dal telefono con le sue righe. Non si può annullare.
+            {sessione.inviataIl === undefined ? (
+              <>
+                <strong className="break-words">{sessione.nome}</strong> non è ancora arrivata al
+                bridge: sparisce dal telefono con le sue righe.
+              </>
+            ) : (
+              <>
+                <strong className="break-words">{sessione.nome}</strong> sparisce dal bridge e dal
+                telefono, con le sue righe. Serve la connessione; se Easyfatt l&apos;ha già
+                scaricata non si può più cancellare.
+              </>
+            )}{' '}
+            Non si può annullare.
           </p>
         </Dialogo>
       )}

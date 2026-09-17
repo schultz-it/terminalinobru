@@ -1,19 +1,26 @@
 import type { Impostazioni, StatoSessione } from '@terminalinobru/core';
-import { ChevronDown, Download, Eye, RefreshCw, RotateCcw, Send } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import type { Cliente } from '@terminalinobru/core';
+import { ChevronDown, Download, Eye, RefreshCw, RotateCcw, Send, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { chiamaBridge, messaggioErrore, type Connessione } from '../api.js';
 import { Avviso } from '../componenti/Avviso.js';
 import { ChipStato } from '../componenti/ChipStato.js';
 import { IconaTipo } from '../componenti/IconaTipo.js';
 import { Pagina } from '../componenti/Pagina.js';
 import { db } from '../db.js';
+import {
+  ErroreFileClienti,
+  importaClientiNelBridge,
+  leggiFileClienti,
+  type EsitoImportazioneClienti,
+} from '../esportazioni/clienti.js';
 import { nomeFileDaIntestazione, scaricaBlob } from '../esportazioni/download.js';
 import { FILTRO_STATO_DEFAULT, filtraSessioni, STATI_FILTRO } from '../esportazioni/filtri.js';
 import { ISTRUZIONI_IMPORTAZIONE } from '../esportazioni/istruzioni.js';
 import { formattaDataOra, formattaNumero } from '../formato.js';
 import { useImpostazioni } from '../hooks/useImpostazioni.js';
 import { useLiveQuery } from '../hooks/useLiveQuery.js';
-import { ETICHETTE_STATO, ETICHETTE_TIPO } from '../sessioni/modello.js';
+import { ETICHETTE_STATO, ETICHETTE_TIPO, etichettaOrdine } from '../sessioni/modello.js';
 import { avviaInvioCoda, useStatoCoda } from '../sync/coda.js';
 import {
   allineaSessioniLocali,
@@ -228,6 +235,7 @@ function SchedaSessione({
         </span>
         <div className="min-w-0 flex-1">
           <span className="block font-bold break-words">{sessione.nome}</span>
+          <OrdineCliente sessione={sessione} />
           <span className="etichetta block">
             {ETICHETTE_TIPO[sessione.tipo]} · chiusa il {formattaDataOra(sessione.chiusaIl)}
           </span>
@@ -243,6 +251,20 @@ function SchedaSessione({
       </div>
       <AzioniSessione connessione={connessione} sessione={sessione} dopoModifica={dopoModifica} />
     </li>
+  );
+}
+
+/** Per i DDT: numero d'ordine assegnato dal bridge e cliente. */
+function OrdineCliente({ sessione }: { sessione: SessioneBridge }) {
+  if (sessione.tipo !== 'ddt') return null;
+  return (
+    <span className="block text-sm">
+      {sessione.numeroDocumento !== undefined && (
+        <strong className="font-semibold">{etichettaOrdine(sessione.numeroDocumento)}</strong>
+      )}
+      {sessione.numeroDocumento !== undefined && sessione.cliente && ' · '}
+      {sessione.cliente && <span className="break-words">{sessione.cliente.nome}</span>}
+    </span>
   );
 }
 
@@ -264,7 +286,10 @@ function RigaTabella({
             {ETICHETTE_TIPO[sessione.tipo]}
           </span>
         </td>
-        <td className="max-w-56 truncate px-3 py-3 font-semibold">{sessione.nome}</td>
+        <td className="max-w-64 px-3 py-3">
+          <span className="block truncate font-semibold">{sessione.nome}</span>
+          <OrdineCliente sessione={sessione} />
+        </td>
         <td className="px-3 py-3 whitespace-nowrap">{formattaDataOra(sessione.chiusaIl)}</td>
         <td className="px-3 py-3">{sessione.dispositivo ?? '—'}</td>
         <td className="px-3 py-3 text-right tabular-nums">
@@ -345,6 +370,165 @@ function RiquadroIstruzioni() {
         )}
       </dl>
     </details>
+  );
+}
+
+type StatoImportazioneClienti =
+  | { fase: 'scelta'; errore?: string }
+  | { fase: 'lettura' }
+  | { fase: 'anteprima'; nomeFile: string; clienti: Cliente[]; avvisi: string[]; errore?: string }
+  | { fase: 'invio'; nomeFile: string; clienti: Cliente[]; avvisi: string[] }
+  | { fase: 'fatto'; esito: EsitoImportazioneClienti };
+
+/** Quanti avvisi mostrare prima di "e altri N". */
+const AVVISI_MOSTRATI = 20;
+
+function SezioneClienti({ connessione }: { connessione: Connessione }) {
+  const idFile = useId();
+  const inputFile = useRef<HTMLInputElement>(null);
+  const [stato, setStato] = useState<StatoImportazioneClienti>({ fase: 'scelta' });
+
+  async function leggi(file: File) {
+    setStato({ fase: 'lettura' });
+    try {
+      const { clienti, avvisi } = await leggiFileClienti(file);
+      setStato({ fase: 'anteprima', nomeFile: file.name, clienti, avvisi });
+    } catch (errore) {
+      setStato({
+        fase: 'scelta',
+        errore:
+          errore instanceof ErroreFileClienti
+            ? errore.message
+            : 'File non leggibile: esportalo di nuovo da Easyfatt e riprova.',
+      });
+    } finally {
+      // Così si può riscegliere lo stesso file dopo averlo corretto.
+      if (inputFile.current) inputFile.current.value = '';
+    }
+  }
+
+  async function conferma() {
+    if (stato.fase !== 'anteprima') return;
+    const { nomeFile, clienti, avvisi } = stato;
+    setStato({ fase: 'invio', nomeFile, clienti, avvisi });
+    try {
+      const esito = await importaClientiNelBridge(connessione, clienti);
+      setStato({ fase: 'fatto', esito });
+    } catch (errore) {
+      setStato({ fase: 'anteprima', nomeFile, clienti, avvisi, errore: messaggioErrore(errore) });
+    }
+  }
+
+  const occupato = stato.fase === 'lettura' || stato.fase === 'invio';
+
+  return (
+    <section className="card flex flex-col gap-3 p-4" aria-labelledby={`${idFile}-titolo`}>
+      <h2 id={`${idFile}-titolo`} className="text-base tracking-wide uppercase">
+        Clienti
+      </h2>
+      <p className="etichetta">
+        Servono sul telefono per scegliere il cliente dei DDT. In Easyfatt apri{' '}
+        <strong>Clienti &gt; Esporta (Excel)</strong>, senza filtri, e carica qui il file
+        (Soggetti.xlsx, oppure un .csv). L&apos;elenco sul bridge viene sostituito; i telefoni lo
+        ricevono alla prossima sincronizzazione.
+      </p>
+
+      {(stato.fase === 'scelta' || stato.fase === 'lettura' || stato.fase === 'fatto') && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor={idFile} className="sr-only">
+            File dei clienti esportato da Easyfatt
+          </label>
+          <input
+            ref={inputFile}
+            id={idFile}
+            type="file"
+            accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+            className="sr-only"
+            disabled={occupato}
+            onChange={(evento) => {
+              const file = evento.target.files?.[0];
+              if (file) void leggi(file);
+            }}
+          />
+          <button
+            type="button"
+            className="pulsante-secondario self-start"
+            disabled={occupato}
+            onClick={() => inputFile.current?.click()}
+          >
+            <Upload size={18} />
+            {stato.fase === 'lettura' ? 'Lettura del file…' : 'Scegli il file dei clienti'}
+          </button>
+        </div>
+      )}
+      {stato.fase === 'scelta' && stato.errore && (
+        <p role="alert" className="text-sm font-semibold text-rosso">
+          {stato.errore}
+        </p>
+      )}
+      {stato.fase === 'fatto' && (
+        <p className="rounded-[10px] border border-verde bg-verde/15 p-3 font-semibold">
+          Clienti caricati sul bridge: {formattaNumero(stato.esito.importati)}{' '}
+          {stato.esito.importati === 1 ? 'importato' : 'importati'},{' '}
+          {formattaNumero(stato.esito.eliminati)}{' '}
+          {stato.esito.eliminati === 1 ? 'tolto perché non più' : 'tolti perché non più'} nel file.
+        </p>
+      )}
+
+      {(stato.fase === 'anteprima' || stato.fase === 'invio') && (
+        <div className="flex flex-col gap-3 rounded-[10px] border border-grigio-bordo p-3">
+          <p>
+            <span className="etichetta block break-all">{stato.nomeFile}</span>
+            <span className="text-2xl font-bold tabular-nums">
+              {formattaNumero(stato.clienti.length)}
+            </span>{' '}
+            <span className="etichetta">
+              {stato.clienti.length === 1 ? 'cliente pronto' : 'clienti pronti'} da caricare
+            </span>
+          </p>
+          {stato.avvisi.length > 0 && (
+            <details className="rounded-[10px] border border-arancio bg-arancio/15 p-3">
+              <summary className="cursor-pointer font-semibold">
+                {stato.avvisi.length} {stato.avvisi.length === 1 ? 'avviso' : 'avvisi'}
+              </summary>
+              <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm">
+                {stato.avvisi.slice(0, AVVISI_MOSTRATI).map((avviso, indice) => (
+                  <li key={indice}>{avviso}</li>
+                ))}
+              </ul>
+              {stato.avvisi.length > AVVISI_MOSTRATI && (
+                <p className="etichetta mt-1">e altri {stato.avvisi.length - AVVISI_MOSTRATI}.</p>
+              )}
+            </details>
+          )}
+          {stato.fase === 'anteprima' && stato.errore && (
+            <p role="alert" className="text-sm font-semibold text-rosso">
+              {stato.errore}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="pulsante-primario"
+              disabled={occupato}
+              onClick={() => void conferma()}
+            >
+              <Upload size={18} />
+              {stato.fase === 'invio' ? 'Caricamento…' : 'Conferma e carica sul bridge'}
+            </button>
+            <button
+              type="button"
+              className="pulsante-secondario"
+              disabled={occupato}
+              onClick={() => setStato({ fase: 'scelta' })}
+            >
+              <X size={18} />
+              Annulla
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -526,6 +710,8 @@ export function Esportazioni() {
               </ul>
             </div>
           )}
+
+          <SezioneClienti connessione={connessione} />
 
           <SezioneBarcodeNuovi connessione={connessione} />
         </>

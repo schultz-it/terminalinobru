@@ -78,7 +78,10 @@ Cloudflare può compilare e pubblicare il progetto da solo, a ogni modifica unit
 2. **Build**: in **Workers & Pages > terminalinobru**, scheda **Deployments**, la build parte da
    sola a ogni push su `main`; dopo aver salvato i campi del passo 3 usa **Retry build** (o
    **Create deployment**) sull'ultima. Se è rossa, apri il log: quasi sempre è un campo della
-   build scritto male.
+   build scritto male. Nella scheda **Settings > Build**, il comando dei branch non di
+   produzione deve essere `pnpm --filter bridge exec wrangler versions upload --env produzione`
+   (carica una versione senza pubblicarla): con `wrangler deploy` lì, ogni push di un branch
+   ancora da revisionare finirebbe in produzione (decisione 64).
 3. Verifica aprendo `https://terminalinobru.<il-tuo-account>.workers.dev/api/salute` nel browser:
    deve rispondere `{"ok":true}`. Poi apri l'indirizzo senza `/api/salute`: deve comparire la
    PWA. L'indirizzo esatto lo trovi nella stessa pagina del Worker (pulsante **Visit**).

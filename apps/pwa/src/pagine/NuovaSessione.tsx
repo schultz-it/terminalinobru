@@ -1,15 +1,18 @@
 import {
   schemaModalitaScansione,
   schemaTipoSessione,
+  type ClienteDocumento,
   type ModalitaScansione,
   type TipoSessione,
 } from '@terminalinobru/core';
-import { Play } from 'lucide-react';
+import { Play, Search, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Avviso } from '../componenti/Avviso.js';
 import { IconaTipo } from '../componenti/IconaTipo.js';
 import { Pagina } from '../componenti/Pagina.js';
+import { SceltaCliente } from '../componenti/SceltaCliente.js';
+import { SchedaCliente } from '../componenti/SchedaCliente.js';
 import { db } from '../db.js';
 import { useImpostazioni } from '../hooks/useImpostazioni.js';
 import { preparaAudio } from '../scanner/feedback.js';
@@ -39,6 +42,8 @@ export function NuovaSessione() {
   const [modalita, setModalita] = useState<ModalitaScansione>();
   const [errore, setErrore] = useState<string>();
   const [salvataggio, setSalvataggio] = useState(false);
+  const [cliente, setCliente] = useState<ClienteDocumento>();
+  const [sceltaCliente, setSceltaCliente] = useState(false);
 
   // La modalità parte da quella predefinita nelle impostazioni, appena sono lette.
   useEffect(() => {
@@ -62,6 +67,7 @@ export function NuovaSessione() {
         note,
         modalita: modalita ?? impostazioni?.modalitaPredefinita ?? 'chiedi_quantita',
         dispositivo: impostazioni?.dispositivo ?? '',
+        ...(tipo === 'ddt' && cliente ? { cliente } : {}),
       });
       void naviga(`/sessioni/${sessione.id}`, { replace: true });
     } catch (e) {
@@ -108,6 +114,40 @@ export function NuovaSessione() {
             </label>
           ))}
         </fieldset>
+
+        {tipo === 'ddt' && (
+          <div className="flex flex-col gap-2">
+            <h3 id="etichetta-cliente" className="font-titolo text-base font-bold uppercase">
+              Cliente{' '}
+              <span className="etichetta font-testo font-normal normal-case">(obbligatorio)</span>
+            </h3>
+            {cliente ? (
+              <div className="card flex items-center gap-3 border-2 border-giallo-scuro bg-giallo-chiaro p-[11px]">
+                <UserRound size={24} className="shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <SchedaCliente cliente={cliente} />
+                </div>
+                <button
+                  type="button"
+                  className="pulsante-secondario shrink-0"
+                  onClick={() => setSceltaCliente(true)}
+                >
+                  Cambia
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                aria-describedby="etichetta-cliente"
+                className="pulsante-secondario"
+                onClick={() => setSceltaCliente(true)}
+              >
+                <Search size={20} />
+                Scegli cliente
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
           <label htmlFor="nome-sessione" className="font-titolo text-base font-bold uppercase">
@@ -167,6 +207,17 @@ export function NuovaSessione() {
           {salvataggio ? 'Creazione…' : 'Inizia sessione'}
         </button>
       </form>
+
+      {sceltaCliente && (
+        <SceltaCliente
+          onChiudi={() => setSceltaCliente(false)}
+          onScegli={(scelto) => {
+            setCliente(scelto);
+            setSceltaCliente(false);
+            setErrore(undefined);
+          }}
+        />
+      )}
     </Pagina>
   );
 }

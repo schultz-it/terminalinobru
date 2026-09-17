@@ -91,6 +91,35 @@ describe('svuotaCoda', () => {
     expect(chiamate).toHaveLength(2);
   });
 
+  it('salva sul DDT il numero d’ordine assegnato dal bridge nella risposta', async () => {
+    db = nuovoDb();
+    const cliente = { codice: '0018', nome: 'Ceramiche Italiane', partitaIva: '03322350178' };
+    const ddt = await creaSessione(db, {
+      tipo: 'ddt',
+      nome: 'Consegna Ceramiche',
+      modalita: 'chiedi_quantita',
+      cliente,
+    });
+    await aggiungiRiga(db, ddt.id, { codiceProdotto: 'A1', quantita: 4 });
+    await chiudiSessione(db, ddt.id, chiusura);
+    const { recupera, chiamate } = fetchFinto(
+      Response.json(
+        { id: ddt.id, ricevutaIl: '2026-09-17T09:00:01Z', numeroDocumento: 12 },
+        { status: 201 },
+      ),
+    );
+
+    expect(await svuotaCoda({ db, impostazioni: connessione, recupera })).toEqual({
+      inviate: 1,
+      rimaste: 0,
+    });
+    expect(JSON.parse(String(chiamate[0]?.init?.body))).toMatchObject({ tipo: 'ddt', cliente });
+    expect(await db.sessioni.get(ddt.id)).toMatchObject({
+      numeroDocumento: 12,
+      inviataIl: expect.any(String),
+    });
+  });
+
   it('se il bridge rifiuta una sessione annota l’errore e passa alla successiva', async () => {
     db = nuovoDb();
     const prima = await sessioneChiusa('Prima');
