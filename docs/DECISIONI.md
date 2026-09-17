@@ -70,3 +70,7 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 
 44. **L'allineamento degli stati salta le sessioni con un invio in coda.** Il bridge conosce ancora la versione precedente di una sessione riaperta e richiusa sul telefono: se l'allineamento prendesse il suo stato (`esportata`), la coda troverebbe la sessione non più `chiusa` e scarterebbe la richiusura senza spedirla. Lettura degli stati e scrittura avvengono nella stessa transazione Dexie. Deciso in revisione di T08.
 45. **La pagina Esportazioni filtra sul telefono, non sul bridge.** `GET /api/sessioni` senza filtro e selezione degli stati lato client: l'elenco è piccolo (decine di sessioni) e cambiare filtro non fa chiamate.
+
+## 2026-09-17 — Preparazione T09
+
+46. **Il QR di setup lo produce lo script del tenant, non un endpoint.** Il testo di T09 prevedeva `GET /api/setup-qr` con auth app: per chiamarlo servirebbe già il token che il QR deve consegnare al telefono. Lo script `tenant:crea` è l'unico momento in cui il token esiste in chiaro, quindi salva lì anche l'SVG del QR, da cancellare dopo l'uso.

@@ -391,8 +391,12 @@ Prepara il deploy in produzione su Cloudflare e il runbook di configurazione.
   l'aggiornamento prodotti; come installare la PWA su Android e importare le impostazioni via QR.
   Segnala chiaramente i punti "da verificare" di docs/PROTOCOLLI-DANEA.md come cose da provare al
   primo collegamento.
-- Endpoint `GET /api/setup-qr` (auth app) che restituisce un PNG o SVG con il QR
-  `terminalinobru://setup?url=...&token=...`, e nota nel runbook su come usarlo una volta sola.
+- QR di setup: lo script `tenant:crea` (apps/bridge/scripts/tenant-crea.mjs) accetta anche
+  `--url https://<dominio>` e, oltre a stampare le credenziali, salva `setup-<utente>.svg` con il
+  QR del testo `terminalinobru://setup?url=...&token=...` (libreria `qrcode` solo in
+  devDependencies del bridge, usata dallo script). Nel runbook: aprire l'SVG sul PC, inquadrarlo
+  dal telefono con "Importa da QR", poi cancellare il file perché contiene il token. Niente
+  endpoint HTTP per il QR: per chiamarlo servirebbe il token che il QR deve fornire.
 
 Criteri di accettazione: il workflow di deploy è valido (usa `act` o almeno una validazione
 sintattica) e non contiene segreti; il runbook è seguibile da chi non è sviluppatore.
