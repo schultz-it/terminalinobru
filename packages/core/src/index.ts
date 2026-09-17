@@ -13,9 +13,12 @@ export { IMPOSTAZIONI_DEFAULT } from './tipi.js';
 export { FINE_RIGA_DEFAULT } from './tipi.js';
 export {
   schemaBarcode,
+  schemaCliente,
+  schemaClienteDocumento,
   schemaImpostazioni,
   schemaModalitaScansione,
   schemaOrigineBarcode,
+  schemaOrigineCliente,
   schemaProdotto,
   schemaRiga,
   schemaSessione,
@@ -24,9 +27,12 @@ export {
 } from './tipi.js';
 export type {
   Barcode,
+  Cliente,
+  ClienteDocumento,
   Impostazioni,
   ModalitaScansione,
   OrigineBarcode,
+  OrigineCliente,
   Prezzo,
   Prodotto,
   Riga,
@@ -34,6 +40,10 @@ export type {
   StatoSessione,
   TipoSessione,
 } from './tipi.js';
+
+/** Pulisce e valida i dati di un cliente, con un messaggio in italiano per ogni campo errato. */
+export { validaCliente } from './cliente.js';
+export type { CampoCliente, DatiCliente, EsitoValidazioneCliente } from './cliente.js';
 
 /** Somma le quantità per codice prodotto, nell'ordine di prima comparsa. */
 export { aggregaRighe } from './aggrega.js';
