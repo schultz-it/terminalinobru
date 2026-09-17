@@ -210,11 +210,11 @@ Un `POST /api/sessioni` con `id` già presente sostituisce le righe (l'utente ha
 | --- | --- | --- | --- |
 | `prodotti` | `codice` | `aggiornatoIl` | Specchio del catalogo, senza tombstone (eliminati rimossi). |
 | `barcode` | `barcode` | `codiceProdotto` | Include abbinamenti locali con `origine: 'app'`. |
-| `sessioni` | `id` | `stato`, `creataIl` | Tutte le sessioni, anche chiuse, finché non si fa pulizia. |
+| `sessioni` | `id` | `stato`, `creataIl` | Tutte le sessioni, anche chiuse, finché non si fa pulizia. Campi solo locali: `inviataIl` (il bridge ha accettato l'invio) e, per i DDT, `numeroDocumento` letto dalla risposta del bridge o dall'allineamento (v2). |
 | `righe` | `id` | `sessioneId`, `[sessioneId+ordine]` | |
 | `codaUpload` | `++id` | `tipo` | Sessioni e barcode da inviare al bridge quando torna la rete. Voce: `{ tipo, riferimento, creataIl, tentativi, ultimoErrore? }`; `riferimento` è l'id della sessione o il barcode abbinato (una voce per barcode, il corpo si legge dallo store `barcode` al momento dell'invio). |
 | `clienti` | `id` | `origine`, `partitaIva`, `codiceFiscale` | v2. Export di Easyfatt (`origine: 'easyfatt'`, senza tombstone) più i clienti creati in app (`origine: 'app'`). Al primo export che porta la stessa partita IVA o lo stesso codice fiscale, la voce creata in app viene sostituita. |
-| `impostazioni` | `chiave` | | Coppie chiave/valore: i campi di `Impostazioni` più `cursoreCatalogo`, l'`aggiornatoIl` dell'ultima risposta di `/api/catalogo`. |
+| `impostazioni` | `chiave` | | Coppie chiave/valore: i campi di `Impostazioni` più `cursoreCatalogo` e `cursoreClienti`, l'`aggiornatoIl` dell'ultima risposta di `/api/catalogo` e di `/api/clienti` (v2). |
 
 ## 4. Forme JSON dell'API
 
