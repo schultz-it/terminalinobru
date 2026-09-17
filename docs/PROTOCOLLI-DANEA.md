@@ -1,8 +1,9 @@
 # Protocolli Danea Easyfatt usati dal progetto
 
-Raccolta di quanto verificato sulla documentazione pubblica Danea il 2026-09-16. Dove la
-documentazione è ambigua lo segnalo con **da verificare**: sono punti da chiudere nel task di
-integrazione con l'Easyfatt reale.
+Raccolta di quanto verificato sulla documentazione pubblica Danea il 2026-09-16 e sul campo nel
+collaudo con l'Easyfatt reale di Imballaggi Brunelli (task T10, 2026-09-17). I punti che la
+documentazione lascia ambigui sono segnati **Collaudo T10** con quanto osservato, oppure **Non
+verificato** con il motivo per cui non è stato provato.
 
 Fonti:
 
@@ -43,15 +44,26 @@ Sequenza di caratteri che descrive ogni riga del file:
 Due famiglie di formato:
 
 - **Campi delimitati**: le lettere sono separate da un carattere separatore, ad esempio `A;Q`, `A,Q`, `A§Q` (§ indica la tabulazione nella UI di Easyfatt), `A/Q/L/S`. Ogni riga del file è `codice<sep>quantità`.
-- **Spaziatura fissa**: solo lettere, la posizione conta. `AAAAQQQqq` significa 4 caratteri di codice, 3 di quantità intera, 2 di decimali. **Da verificare**: convenzione di riempimento (zeri o spazi) per numeri e codici.
+- **Spaziatura fissa**: solo lettere, la posizione conta. `AAAAQQQqq` significa 4 caratteri di codice, 3 di quantità intera, 2 di decimali. **Non verificato**: convenzione di riempimento (zeri o spazi) per numeri e codici. Il progetto usa solo
+il formato delimitato `A,Q`, quindi nel collaudo non è stato provato.
 
 Regole sui decimali: se il separatore dei campi è la virgola, i decimali usano il punto.
-**Da verificare**: con altri separatori Easyfatt accetta la virgola decimale, il punto, o entrambi.
+**Non verificato**: con altri separatori Easyfatt accetta la virgola decimale, il punto, o entrambi; e
+nemmeno, in pratica, una quantità decimale con `A,Q`. La prova di carico con 2,5 del collaudo T10 è
+stata saltata dal titolare. Finché non serve un altro separatore vale la regola documentata.
+
+**Collaudo T10**: Easyfatt accetta `A,Q`. Al primo tentativo la rettifica ha risposto "Stringa di
+formato non valida: la stringa di formato per i file con separatore può contenere solo i caratteri
+A, Q, L, S, X intervallati fra di loro da un separatore" con il campo che mostrava `A,Q`;
+riscrivendo `A,Q` a mano l'import è andato. Quel messaggio indica un carattere invisibile o
+diverso nel campo di Easyfatt (Opzioni > Moduli > Magazzino), non un problema del file. Con `A;Q` in
+Easyfatt e il file a virgola ogni riga è scartata con "Linea con numero di campi differente dalla
+stringa di formato".
 
 Scelte del progetto (configurabili in app, devono coincidere con Easyfatt):
 
 - Default `A,Q` con decimali col punto, perché è l'unica combinazione documentata senza ambiguità.
-- Fine riga `\r\n`, codifica UTF-8 senza BOM. I codici prodotto sono ASCII in pratica; **da verificare** che Easyfatt legga UTF-8 se un codice ha caratteri accentati.
+- Fine riga `\r\n`, codifica UTF-8 senza BOM. I codici prodotto sono ASCII in pratica; **non verificato** che Easyfatt legga UTF-8 se un codice ha caratteri accentati: i codici del catalogo reale sono ASCII (es. `+sca500350350`), quindi il caso non si presenta.
 - Nel campo `A` l'app scrive sempre il **codice prodotto Easyfatt**, mai il barcode letto. La risoluzione barcode → codice avviene sul telefono. Così l'import funziona anche per prodotti senza barcode e per barcode abbinati in app non ancora riportati in Easyfatt.
 - Una riga per prodotto, quantità sommate.
 
@@ -75,8 +87,13 @@ FILM500,2.5
 Comportamento noto della rettifica manuale: se un prodotto è inserito più volte la quantità
 aumenta di 1 ad ogni lettura. Il nostro file è già aggregato, quindi non incide.
 
-**Da verificare**: cosa fa Easyfatt con un codice del file non trovato in archivio (riga scartata
-con avviso, o blocco dell'import).
+**Collaudo T10**: un codice del file non trovato in archivio **non blocca** l'import. Nella rettifica
+manuale Easyfatt importa le altre righe e riepiloga "2 voci inserite, 1 voci non importate: riga 3
+codice a barre inesistente".
+
+**Collaudo T10**: nell'installazione cloud "Importa da terminale portatile" è disponibile, dopo la
+risposta di Danea al ticket. È stato provato nella rettifica manuale; carico e arrivo merce non sono
+stati provati.
 
 ## 2. Invio catalogo prodotti (e-commerce)
 
@@ -91,8 +108,10 @@ Risposta attesa: corpo esattamente `OK` (prima riga). Righe successive opzionali
 `ImageSendURL=...` e `ImageSendFinishURL=...` se si vogliono le immagini: noi non le chiediamo.
 Qualsiasi corpo diverso da `OK` viene mostrato all'utente in Easyfatt come messaggio di errore,
 quindi gli errori devono essere frasi leggibili. Il bridge risponde agli errori con stato HTTP 400
-e corpo in testo puro. **Da verificare**: se Easyfatt mostra il corpo anche con stato 400 o solo con
-200; nel secondo caso il bridge dovrà rispondere 200 con la frase d'errore.
+e corpo in testo puro. **Non verificato**: se Easyfatt mostra il corpo anche con stato 400 o solo con
+200. Nel collaudo ogni invio del catalogo ha avuto esito `OK`, quindi un errore del bridge non si è
+mai presentato; provocarlo apposta in produzione non è stato ritenuto utile. Se un giorno Easyfatt
+mostra un errore generico invece della frase del bridge, il bridge dovrà rispondere 200 con la frase.
 
 ### 2.2 Struttura XML
 
@@ -156,9 +175,11 @@ gestisce: un barcode di variante risolve al prodotto padre.
 
 Formato numeri: punto decimale, niente separatore migliaia. Date ISO `aaaa-mm-gg`. Codifica UTF-8.
 
-**Da verificare** sul campo: se con `Mode="full"` Easyfatt invia davvero tutti i prodotti o solo
-quelli marcati "pubblica su e-commerce" (in Easyfatt ogni prodotto ha la spunta per sito). Se vale
-la seconda, i prodotti vanno spuntati in blocco per il sito del bridge.
+Se con `Mode="full"` Easyfatt invia tutti i prodotti o solo quelli marcati "pubblica su
+e-commerce" (in Easyfatt ogni prodotto ha la spunta per sito): **parzialmente verificato**. Prima del
+collaudo T10 il push ha consegnato 548 prodotti, ma il numero non è stato confrontato con il totale
+dell'archivio. Se un prodotto manca sul telefono, per
+prima cosa controlla la spunta del sito.
 
 ## 3. Ricezione documenti (e-commerce, v2)
 
@@ -168,32 +189,52 @@ Verificato il 2026-09-17 sulle pagine Danea "Specifiche tecniche e-commerce: ric
 Easyfatt fa `GET` all'URL configurato con parametri `appver=2` e, opzionali, `firstdate`,
 `lastdate` (`yyyy-mm-dd`), `firstnum`, `lastnum`. Stessa autenticazione del punto 2. La risposta è
 un `EasyfattDocuments` (esempio nella sezione 4). In Easyfatt si lancia da **Strumenti > Scarica
-ordini da e-Commerce**, in automatico dall'URL o a mano da file; il programma "propone sempre di
-scaricare partendo dall'ultimo ordine non ancora importato": la deduplica è affidata al **numero
-del documento** (`Number`), che quindi deve essere progressivo e stabile per ogni documento, e il
-bridge deve rispettare `firstnum`/`lastnum` (e `firstdate`/`lastdate`) nella risposta.
+ordini da e-Commerce**, in automatico dall'URL o a mano da file; secondo la documentazione il
+programma "propone sempre di scaricare partendo dall'ultimo ordine non ancora importato": la
+deduplica è affidata al **numero del documento** (`Number`), che quindi deve essere progressivo e
+stabile per ogni documento, e il bridge deve rispettare `firstnum`/`lastnum` (e
+`firstdate`/`lastdate`) nella risposta.
+
+**Collaudo T10**: la finestra di scarico propone numero e date, e con i valori proposti Easyfatt
+chiama **sempre** `?appver=2&firstdate=2026-01-01&lastdate=2026-12-31&firstnum=1`, cioè l'anno
+intero dal numero 1, senza `lastnum`, anche dopo aver importato degli ordini. I doppioni li scarta
+Easyfatt da solo: al secondo scarico nessun ordine nuovo, e un DDT riaperto e richiuso sul telefono
+(stesso numero) arriva una volta sola. Quindi il bridge non può capire da `firstnum` cosa è stato
+importato (docs/DECISIONI.md punto 68), e ogni risposta contiene tutti i DDT dell'anno.
 
 Gli ordini scaricati diventano **ordini cliente**; da lì "Genera da" produce DDT, fattura o
 ricevuta. Il cliente viene abbinato così: prima `CustomerCode` (o `CustomerWebLogin`), poi
 codice fiscale, partita IVA o e-mail; se nulla corrisponde viene creato un nuovo cliente.
+**Collaudo T10**: un ordine con `CustomerCode` di un cliente esistente si abbina a quel cliente
+senza doppioni. Un ordine senza `CustomerCode` per una partita IVA sconosciuta crea l'anagrafica
+con indirizzo, CAP, città, provincia, partita IVA, codice fiscale, SDI o PEC
+(`CustomerEInvoiceDestCode`), telefono ed email nei campi giusti.
 
 `DocumentType`: se omesso vale `C` (ordine cliente). Il tracciato ammette A, B, C, D, E, F, G, H,
-I, J, L, M, N, O, P, Q, R, S, ma la ricezione e-commerce è pensata per `C`. **Da verificare**: se il
-canale accetta anche `D` (DDT diretto) e `H` (arrivo merce); in v2 si usa `C` e il DDT lo genera
-Easyfatt con "Genera da", che è documentato.
+I, J, L, M, N, O, P, Q, R, S, ma la ricezione e-commerce è pensata per `C`. **Non verificato**: se il
+canale accetta anche `D` (DDT diretto) e `H` (arrivo merce). Nel collaudo T10 non è stato provato:
+serviva un archivio di prova, e dopo la risposta di Danea il carico passa dal file del terminalino.
+In v2 si usa `C` e il DDT lo genera Easyfatt con "Genera da", che è documentato.
 
 Tag utili del `Document`: `CustomerCode`, `CustomerName`, `Date`, `Number`, `Numbering`,
 `Warehouse`, `PriceList` (denominazione del listino), `InternalComment`, `CustomField1-4`. Tag di
 `Row`: `Code`, `Description`, `Qty`, `Um`, `Price`, `Discounts`, `VatCode`, `Notes`, `Stock`.
-Nessun tag è dichiarato obbligatorio. **Da verificare**: cosa fa Easyfatt con `Price` omesso
-(prezzo del listino del cliente, o zero) e se `PriceList` forza il listino; se `Description`
-omessa viene presa dall'archivio; cosa fa con un `Code` non in archivio (riga descrittiva o
-scarto).
+Nessun tag è dichiarato obbligatorio.
+
+**Collaudo T10**: con `Price` omesso Easyfatt **non** mette zero: nell'ordine le righe hanno il prezzo
+del listino 1. Il cliente della prova aveva il listino 1 in scheda, quindi non si può ancora dire se
+Easyfatt applichi il listino del cliente o sempre il listino 1. Il titolare ha deciso di non
+intervenire (docs/DECISIONI.md punto 69). Non verificati: se `PriceList` forza il listino (il
+bridge non lo manda), se una `Description` omessa viene presa dall'archivio (il bridge la manda
+sempre, dal catalogo) e cosa fa Easyfatt con un `Code` non in archivio dentro un ordine. Dal
+telefono quest'ultimo caso non si può produrre, perché le righe nascono solo da prodotti del
+catalogo, e la prova con un file costruito a mano è stata saltata dal titolare.
 
 Vincolo emerso sul campo (2026-09-17): nell'installazione di Imballaggi Brunelli (Easyfatt in
-cloud) l'importazione da terminale portatile non è disponibile; ticket aperto con Danea. Per
-questo i DDT passano da questo canale (v2), mentre inventario e carico restano sul file del
-terminalino in attesa della risposta.
+cloud) l'importazione da terminale portatile non era disponibile, ticket aperto con Danea. Per
+questo i DDT passano da questo canale (v2). Durante il collaudo T10 Danea ha risposto e
+l'importazione da terminale funziona (sezione 1.3): inventario e carico usano il file, i DDT restano
+su questo canale, che porta cliente e numero.
 
 ## 4. Easyfatt-XML documenti (v2)
 
@@ -264,6 +305,8 @@ Non esiste un tipo documento per la rettifica di inventario: l'inventario resta 
 ## 5. Importazione prodotti da Excel (per riportare i barcode abbinati in app)
 
 Easyfatt importa prodotti da foglio Excel con colonne corrispondenti ai campi; "Cod. barre" è tra
-queste e l'import aggiorna i prodotti esistenti per codice. **Da verificare** se l'import da Excel
-supporta anche i codici a barre aggiuntivi: in caso contrario i barcode extra vanno inseriti a mano
-nella scheda prodotto. Il bridge espone comunque il CSV degli abbinamenti.
+queste e l'import aggiorna i prodotti esistenti per codice. **Non verificato** se l'import da Excel
+supporta anche i codici a barre aggiuntivi: il passo 6 del collaudo T10 (abbinamento in app, CSV,
+importazione) è stato saltato dal titolare. Oggi il catalogo ha solo 2 prodotti con barcode, e in
+entrambi il campo contiene il codice prodotto, quindi la funzione non è ancora in uso. Finché non
+viene provato, i barcode extra vanno inseriti a mano nella scheda prodotto. Il bridge espone comunque il CSV degli abbinamenti.

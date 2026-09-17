@@ -126,7 +126,8 @@ Se lo stesso prodotto compare più volte nella sessione, l'export somma le quant
 3. In Easyfatt: **Strumenti > Scarica ordini da e-Commerce**. Easyfatt chiede al bridge i
    documenti dall'ultimo numero non importato; il bridge risponde con gli ordini cliente (`C`)
    delle sessioni DDT, righe aggregate con codice e quantità. La prima consegna segna la sessione
-   `esportata`; quando Easyfatt chiede numeri successivi, le precedenti passano a `importata`.
+   `esportata`; quando Easyfatt la riceve di nuovo passa a `importata` (Easyfatt chiede sempre
+   dal numero 1 e deduplica da solo: `DECISIONI.md` punto 68).
 4. In Easyfatt l'ordine cliente si trasforma in DDT con "Genera da": lo scarico avviene al
    salvataggio del DDT.
 
@@ -134,8 +135,9 @@ L'elenco clienti arriva dall'export Excel di Easyfatt (Clienti > Esporta) carica
 Esportazioni sul PC, che lo legge nel browser e lo manda al bridge. Il file del terminalino resta disponibile come ripiego.
 
 Motivo del cambio rispetto alla v1 (file terminalino importato in un DDT): nell'installazione
-cloud di Imballaggi Brunelli l'importazione da terminale portatile non è disponibile
-(`DECISIONI.md` punto 52).
+cloud di Imballaggi Brunelli l'importazione da terminale portatile non era disponibile
+(`DECISIONI.md` punto 52). Danea l'ha poi abilitata (collaudo T10, punto 70): il file resta il canale
+di inventario e carico, i DDT restano ordini e-commerce.
 
 ### 3.4 Carico
 
@@ -170,7 +172,7 @@ l'importazione prodotti da Excel). Funzione da valutare sul campo.
 
 ## 6. Cosa è fuori scope in v1
 
-- DDT diretti (`DocumentType` D) e arrivi merce (H) via ricezione e-commerce: da verificare sul campo, per ora i DDT nascono come ordini cliente e il carico resta sul file del terminalino.
+- DDT diretti (`DocumentType` D) e arrivi merce (H) via ricezione e-commerce: non provati nel collaudo T10 (serviva un archivio di prova e il file del terminalino funziona); i DDT nascono come ordini cliente e il carico resta sul file del terminalino.
 - Lotti e scadenze: supportati nella libreria, assenti dalla UI.
 - Multi-magazzino: il campo esiste nel catalogo, la UI ne assume uno solo.
 - Agente Windows per depositare i file: non serve, si scarica dal browser.

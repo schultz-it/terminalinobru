@@ -94,6 +94,27 @@ export function statementSegnaEsportate(
 }
 
 /**
+ * Segna come `importata` le sessioni indicate, già `esportata`: Easyfatt le riceve di nuovo, quindi
+ * le aveva già avute a uno scarico precedente. Serve perché Easyfatt chiede sempre `firstnum=1`
+ * (collaudo T10, docs/DECISIONI.md punto 68) e la regola di {@link statementSegnaImportatePrimaDi}
+ * non scatta mai. Le sessioni restano comunque nella risposta: se il primo import era stato
+ * annullato, Easyfatt le riprende.
+ */
+export function statementSegnaImportate(
+  db: D1Database,
+  idSessioni: readonly string[],
+  adesso: string,
+): D1PreparedStatement[] {
+  return idSessioni.map((id) =>
+    db
+      .prepare(
+        "UPDATE sessione SET stato = 'importata', importata_il = ?2 WHERE id = ?1 AND stato = 'esportata'",
+      )
+      .bind(id, adesso),
+  );
+}
+
+/**
  * Segna come `importata` le sessioni ddt del tenant ancora `esportata` con numero minore di
  * `firstnum`: Easyfatt ha chiesto di ripartire da lì, quindi le precedenti sono state importate
  * (docs/DECISIONI.md punto 53).

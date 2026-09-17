@@ -26,6 +26,16 @@ export function indirizzoBridge(urlBridge: string, percorso: string): string {
   return `${base}${percorso}`;
 }
 
+/**
+ * Oltre questo tempo una chiamata al bridge, lettura del corpo compresa, viene interrotta. Senza
+ * limite una rete mobile appesa lasciava "Sincronizzazione…" in corso per sempre, e con essa ogni
+ * sincronizzazione successiva (collaudo T10, docs/DECISIONI.md punto 67).
+ */
+export const ATTESA_MASSIMA_BRIDGE_MS = 60_000;
+
+const MESSAGGIO_TEMPO_SCADUTO =
+  'Il bridge non ha risposto entro un minuto: controlla la connessione e riprova.';
+
 function messaggioPerStato(stato: number): string {
   if (stato === 401 || stato === 403) {
     return 'Token non valido: controllalo nelle impostazioni.';
@@ -34,6 +44,9 @@ function messaggioPerStato(stato: number): string {
   if (stato >= 500) return `Il bridge ha avuto un problema (errore ${stato}). Riprova più tardi.`;
   return `Il bridge ha rifiutato la richiesta (errore ${stato}).`;
 }
+
+/** Segnale di interruzione di ogni risposta, per distinguere il tempo scaduto nella lettura del corpo. */
+const segnaliChiamate = new WeakMap<Response, AbortSignal>();
 
 /**
  * Chiamata autenticata verso il bridge. Restituisce la risposta solo se ha codice 2xx; ogni
@@ -45,6 +58,7 @@ export async function chiamaBridge(
   percorso: string,
   init: RequestInit = {},
   recupera: typeof fetch = fetch,
+  attesaMassimaMs: number = ATTESA_MASSIMA_BRIDGE_MS,
 ): Promise<Response> {
   if (connessione.token.trim() === '') {
     throw new ErroreBridge('Manca il token: inseriscilo nelle impostazioni.');
@@ -52,17 +66,23 @@ export async function chiamaBridge(
   const intestazioni = new Headers(init.headers);
   intestazioni.set('Authorization', `Bearer ${connessione.token.trim()}`);
   intestazioni.set('Accept', 'application/json');
+  // Il timer resta attivo anche dopo le intestazioni: interrompe pure la lettura del corpo.
+  const interruttore = new AbortController();
+  setTimeout(() => interruttore.abort(), attesaMassimaMs);
   let risposta: Response;
   try {
     risposta = await recupera(indirizzoBridge(connessione.urlBridge, percorso), {
       ...init,
       headers: intestazioni,
+      signal: interruttore.signal,
     });
   } catch {
+    if (interruttore.signal.aborted) throw new ErroreBridge(MESSAGGIO_TEMPO_SCADUTO);
     throw new ErroreBridge(
       "Bridge non raggiungibile: controlla la connessione e l'indirizzo nelle impostazioni.",
     );
   }
+  segnaliChiamate.set(risposta, interruttore.signal);
   if (!risposta.ok) {
     let dettaglio: string | undefined;
     try {
@@ -106,12 +126,14 @@ export async function richiestaBridge<T>(
   percorso: string,
   schema: z.ZodType<T>,
   recupera: typeof fetch = fetch,
+  attesaMassimaMs: number = ATTESA_MASSIMA_BRIDGE_MS,
 ): Promise<T> {
-  const risposta = await chiamaBridge(connessione, percorso, {}, recupera);
+  const risposta = await chiamaBridge(connessione, percorso, {}, recupera, attesaMassimaMs);
   let corpo: unknown;
   try {
     corpo = await risposta.json();
   } catch {
+    if (segnaliChiamate.get(risposta)?.aborted) throw new ErroreBridge(MESSAGGIO_TEMPO_SCADUTO);
     throw new ErroreBridge(
       "Risposta del bridge non leggibile: l'indirizzo potrebbe non essere quello del bridge.",
     );
