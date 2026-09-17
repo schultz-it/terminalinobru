@@ -8,6 +8,7 @@ export function Pagina({
   indietro,
   onIndietro,
   azione,
+  larga = false,
   children,
 }: {
   titolo: string;
@@ -16,6 +17,8 @@ export function Pagina({
   /** Sostituisce la navigazione del pulsante indietro, per le viste interne a una schermata. */
   onIndietro?: () => void;
   azione?: ReactNode;
+  /** Contenuto più largo (`max-w-5xl`), per le schermate pensate per il browser del PC. */
+  larga?: boolean;
   children: ReactNode;
 }) {
   const naviga = useNavigate();
@@ -43,7 +46,11 @@ export function Pagina({
           {azione}
         </div>
       </header>
-      <main className="mx-auto flex w-full max-w-xl flex-col gap-4 p-4">{children}</main>
+      <main
+        className={`mx-auto flex w-full flex-col gap-4 p-4 ${larga ? 'max-w-5xl' : 'max-w-xl'}`}
+      >
+        {children}
+      </main>
     </>
   );
 }

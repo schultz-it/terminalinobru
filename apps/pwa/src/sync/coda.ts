@@ -4,6 +4,7 @@ import { ErroreBridge, inviaJsonAlBridge, messaggioErrore } from '../api.js';
 import { db as dbApp, type DatabaseTerminalino, type VoceCodaUpload } from '../db.js';
 import { caricaImpostazioni } from '../impostazioni.js';
 import { sessioneCompleta } from '../sessioni/operazioni.js';
+import { allineaSessioniLocali } from './sessioni.js';
 
 /** Esito di un giro sulla coda. Non lancia mai: gli errori restano scritti sulle voci. */
 export type EsitoCoda = {
@@ -187,7 +188,10 @@ export function creaServizioCoda(dipendenze: {
         return { inviate: 0, rimaste: await db.codaUpload.count(), errore: 'Sei offline.' };
       }
       const impostazioni = await caricaImpostazioni(db);
-      return svuotaCoda({ db, impostazioni, ...(recupera ? { recupera } : {}) });
+      const esito = await svuotaCoda({ db, impostazioni, ...(recupera ? { recupera } : {}) });
+      // Allineamento di sola lettura dopo il giro: non deve mai far fallire l'invio della coda.
+      await allineaSessioniLocali({ db, impostazioni, ...(recupera ? { recupera } : {}) });
+      return esito;
     })()
       .catch((): EsitoCoda => ({ inviate: 0, rimaste: 0, errore: 'Errore imprevisto nell’invio.' }))
       .then((esito) => {
