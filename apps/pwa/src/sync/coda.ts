@@ -61,6 +61,8 @@ async function inviaSessione(
   }
   await inviaJsonAlBridge(impostazioni, '/api/sessioni', sessione, recupera);
   await db.transaction('rw', db.sessioni, db.codaUpload, async () => {
+    // Da ora il bridge ha la sessione: cancellarla solo sul telefono la lascerebbe sul PC.
+    await db.sessioni.update(voce.riferimento, { inviataIl: new Date().toISOString() });
     const attuale = await db.sessioni.get(voce.riferimento);
     if (attuale?.stato === 'chiusa' && attuale.chiusaIl !== sessione.chiusaIl) return;
     if (voce.id !== undefined) await db.codaUpload.delete(voce.id);

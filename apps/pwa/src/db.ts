@@ -18,7 +18,10 @@ export type VoceImpostazione = {
 };
 
 /** Sessione salvata sul telefono: le righe stanno nel loro store, non annidate. */
-export type SessioneLocale = Omit<Sessione, 'righe'>;
+export type SessioneLocale = Omit<Sessione, 'righe'> & {
+  /** Quando il bridge ha accettato l'ultimo invio: da allora la sessione non si cancella solo sul telefono. */
+  inviataIl?: string;
+};
 
 /** Database IndexedDB dell'app, con gli store di docs/MODELLO-DATI.md sezione 3. */
 export class DatabaseTerminalino extends Dexie {

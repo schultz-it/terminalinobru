@@ -21,6 +21,7 @@ import { ETICHETTE_MODALITA, ETICHETTE_TIPO } from '../sessioni/modello.js';
 import {
   aggiungiRiga,
   cancellaRiga,
+  cancellaSessione,
   chiudiSessione,
   ErroreSessione,
   modificaQuantita,
@@ -110,6 +111,7 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   const [avviso, setAvviso] = useState<Messaggio>();
   const [erroreChiusura, setErroreChiusura] = useState<string>();
   const [chiusura, setChiusura] = useState(false);
+  const [confermaCancella, setConfermaCancella] = useState(false);
   const inventario = sessione.tipo === 'inventario';
 
   const totali = useMemo(() => {
@@ -122,7 +124,8 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   const totale = (codice: string) => arrotondaQuantita(totali.get(codice) ?? 0);
 
   // Le letture arrivano dallo scanner anche con un foglio aperto: servono i valori correnti.
-  const sovrapposto = foglio !== undefined || ricerca !== undefined || daCancellare !== undefined;
+  const sovrapposto =
+    foglio !== undefined || ricerca !== undefined || daCancellare !== undefined || confermaCancella;
   const sovrappostoRef = useRef(sovrapposto);
   sovrappostoRef.current = sovrapposto;
 
@@ -183,7 +186,8 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
   }, [posizione, naviga, inserisci]);
 
   const esci = () => {
-    if (daCancellare) setDaCancellare(undefined);
+    if (confermaCancella) setConfermaCancella(false);
+    else if (daCancellare) setDaCancellare(undefined);
     else if (foglio) setFoglio(undefined);
     else if (ricerca) setRicerca(undefined);
     else void naviga('/');
@@ -216,6 +220,16 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
       setAvviso({ tipo: 'errore', testo: messaggio(errore) });
     }
     setDaCancellare(undefined);
+  }
+
+  async function cancella() {
+    try {
+      await cancellaSessione(db, sessione.id);
+      void naviga('/', { replace: true });
+    } catch (errore) {
+      setConfermaCancella(false);
+      setAvviso({ tipo: 'errore', testo: messaggio(errore) });
+    }
   }
 
   async function chiudi() {
@@ -391,6 +405,14 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
           <CheckCheck size={20} />
           Riepilogo e chiusura
         </button>
+        <button
+          type="button"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-rosso bg-bianco px-4 font-semibold text-rosso active:bg-grigio-sfondo"
+          onClick={() => setConfermaCancella(true)}
+        >
+          <Trash2 size={20} />
+          Cancella sessione
+        </button>
       </div>
 
       {foglio && (
@@ -431,6 +453,24 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
         />
       )}
 
+      {confermaCancella && (
+        <Dialogo
+          titolo="Cancellare la sessione?"
+          etichettaConferma="Cancella sessione"
+          distruttivo
+          onConferma={() => void cancella()}
+          onAnnulla={() => setConfermaCancella(false)}
+        >
+          <p>
+            <strong className="break-words">{sessione.nome}</strong>
+            {righe.length > 0
+              ? ` e le sue ${righe.length} ${righe.length === 1 ? 'riga' : 'righe'} spariscono dal telefono.`
+              : ' sparisce dal telefono.'}{' '}
+            Non si può annullare.
+          </p>
+        </Dialogo>
+      )}
+
       {daCancellare && (
         <Dialogo
           titolo="Cancellare la riga?"
@@ -451,6 +491,7 @@ function SessioneAperta({ sessione, righe }: { sessione: SessioneLocale; righe: 
 }
 
 function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: Riga[] }) {
+  const naviga = useNavigate();
   const prodotti = useProdottiRighe(righe);
   const { impostazioni } = useImpostazioni();
   const { inCorso } = useStatoCoda();
@@ -465,6 +506,7 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
   );
   const [messaggioAzione, setMessaggioAzione] = useState<Messaggio>();
   const [confermaRiapri, setConfermaRiapri] = useState(false);
+  const [confermaCancella, setConfermaCancella] = useState(false);
   const [condivisione, setCondivisione] = useState(false);
   const riepilogo = useMemo(
     () => calcolaRiepilogo(sessione.tipo, righe, prodotti),
@@ -484,6 +526,16 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
       setMessaggioAzione({ tipo: 'errore', testo: messaggio(errore) });
     } finally {
       setCondivisione(false);
+    }
+  }
+
+  async function cancella() {
+    try {
+      await cancellaSessione(db, sessione.id);
+      void naviga('/', { replace: true });
+    } catch (errore) {
+      setConfermaCancella(false);
+      setMessaggioAzione({ tipo: 'errore', testo: messaggio(errore) });
     }
   }
 
@@ -564,8 +616,34 @@ function SessioneChiusa({ sessione, righe }: { sessione: SessioneLocale; righe: 
           Riapri sessione
         </button>
       )}
+      {/* Cancellabile solo finché il bridge non l'ha ricevuta: dopo, resta visibile al PC. */}
+      {sessione.inviataIl === undefined && (
+        <button
+          type="button"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-rosso bg-bianco px-4 font-semibold text-rosso active:bg-grigio-sfondo"
+          onClick={() => setConfermaCancella(true)}
+        >
+          <Trash2 size={20} />
+          Cancella sessione
+        </button>
+      )}
 
       <Riepilogo tipo={sessione.tipo} riepilogo={riepilogo} />
+
+      {confermaCancella && (
+        <Dialogo
+          titolo="Cancellare la sessione?"
+          etichettaConferma="Cancella sessione"
+          distruttivo
+          onConferma={() => void cancella()}
+          onAnnulla={() => setConfermaCancella(false)}
+        >
+          <p>
+            <strong className="break-words">{sessione.nome}</strong> non è ancora arrivata al
+            bridge: sparisce dal telefono con le sue righe. Non si può annullare.
+          </p>
+        </Dialogo>
+      )}
 
       {confermaRiapri && (
         <Dialogo

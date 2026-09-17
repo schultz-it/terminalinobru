@@ -507,6 +507,8 @@ Porta il bridge alla v2: clienti, numerazione dei DDT e ricezione documenti da E
   `numero_documento` alla prima ricezione leggendo e incrementando
   `tenant.prossimo_numero_documento` nella stessa `db.batch`; un upsert successivo della stessa
   sessione non cambia il numero. Risposta con `numeroDocumento`. Elenco e dettaglio lo espongono.
+- `DELETE /api/sessioni/:id` (Bearer): cancella sessione e righe; `204`; `409` se `esportata` o
+  `importata` (Easyfatt l'ha già scaricata) con messaggio; `404` se non esiste.
 - `GET /easyfatt/documenti` (Basic): `analizzaParametriRicezione`; risponde con
   `generaDocumentiXml` delle sessioni `ddt` non `aperta` del tenant con numero nell'intervallo
   `firstnum..lastnum` e data di chiusura in `firstdate..lastdate` (parametri assenti = nessun
@@ -555,7 +557,11 @@ Completa la v2 nella PWA.
   Esporta, salvare come CSV). Per le sessioni DDT il pulsante "Scarica terminale.txt" resta ma
   le istruzioni dicono che il DDT arriva con Strumenti > Scarica ordini da e-Commerce e poi
   "Genera da > DDT"; mostra il numero ordine nell'elenco.
-- Test: ricerca clienti, sync clienti con fetch finto, validazione della nuova sessione DDT.
+- Cancellazione di una sessione già inviata: "Cancella sessione" chiama `DELETE /api/sessioni/:id`
+  e, se il bridge risponde 204, cancella anche in locale; con 409 mostra il messaggio del bridge.
+  Resta la cancellazione solo locale per aperte e chiuse non inviate (`inviataIl` assente).
+- Test: ricerca clienti, sync clienti con fetch finto, validazione della nuova sessione DDT,
+  cancellazione con fetch finto (204 e 409).
 ```
 
 Criteri di accettazione: con clienti caricati dal PC, sul telefono si crea un DDT scegliendo il
