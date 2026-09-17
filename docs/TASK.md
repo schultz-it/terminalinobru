@@ -502,14 +502,17 @@ Criteri di accettazione: `pnpm -r test` verde con copertura 100% su easyfatt; l'
 
 Modello: **Sonnet 5**, effort **high**. Branch `task/13-bridge-documenti`. Leggi anche
 `docs/PROTOCOLLI-DANEA.md` (sezione 3), `docs/MODELLO-DATI.md` (sezioni 2 e 4),
-`docs/DECISIONI.md` (punti 52-55) e `apps/bridge/README.md`.
+`docs/DECISIONI.md` (punti 52-62) e `apps/bridge/README.md`.
 
 ```
 Porta il bridge alla v2: clienti, numerazione dei DDT e ricezione documenti da Easyfatt.
 
 - Migrazione `0002_clienti_documenti.sql`: tabella `cliente`, colonne `cliente` (JSON di
   `ClienteDocumento`) e `numero_documento` su `sessione` con indice unico (tenant, numero),
-  `tenant.prossimo_numero_documento` e `tenant.ultimo_clienti_il`.
+  `tenant.prossimo_numero_documento` e `tenant.ultimo_clienti_il`. La migrazione assegna il numero
+  anche alle sessioni `ddt` già presenti, in ordine di `ricevuta_il`, e porta il contatore oltre
+  l'ultimo. Nella PR ricorda che in produzione le migrazioni si applicano dal PC
+  (`wrangler d1 migrations apply DB --remote --env produzione`, docs/RUNBOOK.md sezione 4).
 - `POST /api/clienti/importa` (Bearer, JSON `{ "clienti": Cliente[] }` già interpretato dalla
   PWA, validato con lo schema di core, max 2 MB, massimo 5000 clienti): upsert a blocchi e
   tombstone per gli assenti come il catalogo `full`, `ultimo_clienti_il` alla fine; risposta
