@@ -70,6 +70,17 @@ describe('sincronizzaClienti', () => {
     expect(await leggiCursoreClienti(db)).toBe('2026-09-17T07:00:00Z');
   });
 
+  it('rimette il codice, che il bridge manda solo come id', async () => {
+    db = nuovoDb();
+    const { recupera } = fetchFinto(
+      rispostaClienti({
+        clienti: [{ id: '0018', nome: 'Ceramiche', origine: 'easyfatt', aggiornatoIl: 'x' }],
+      }),
+    );
+    await sincronizzaClienti({ db, impostazioni: connessione, recupera });
+    expect((await db.clienti.get('0018'))?.codice).toBe('0018');
+  });
+
   it('poi chiede il delta con il suo cursore, separato da quello del catalogo', async () => {
     db = nuovoDb();
     await db.clienti.bulkPut([daEasyfatt('0018', 'Ceramiche'), daEasyfatt('0020', 'Brunelli')]);

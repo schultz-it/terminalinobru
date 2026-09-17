@@ -10,7 +10,7 @@ export const ETICHETTE_TIPO: Record<TipoSessione, string> = {
 /** Spiegazione breve di ogni tipo, per la scelta nella nuova sessione. */
 export const DESCRIZIONI_TIPO: Record<TipoSessione, string> = {
   inventario: 'Conta la merce: la quantità rettifica la giacenza',
-  ddt: 'Merce in uscita da importare in un DDT',
+  ddt: 'Merce in uscita: arriva in Easyfatt come ordine del cliente',
   carico: 'Merce in arrivo da un fornitore',
 };
 
@@ -20,6 +20,21 @@ export const ETICHETTE_STATO: Record<StatoSessione, string> = {
   esportata: 'Esportata',
   importata: 'Importata',
 };
+
+/**
+ * Cosa vuol dire lo stato per un DDT, che in Easyfatt arriva come ordine e-commerce
+ * (docs/ARCHITETTURA.md sezione 3.3). `aperta` non ha ancora un ordine.
+ */
+export const DESCRIZIONI_STATO_DDT: Record<Exclude<StatoSessione, 'aperta'>, string> = {
+  chiusa: 'In attesa dello scarico da Easyfatt',
+  esportata: 'Scaricato da Easyfatt',
+  importata: 'Importato in Easyfatt',
+};
+
+/** Numero d'ordine come lo legge l'utente. */
+export function etichettaOrdine(numeroDocumento: number): string {
+  return `Ordine n. ${numeroDocumento}`;
+}
 
 export const ETICHETTE_MODALITA: Record<ModalitaScansione, string> = {
   chiedi_quantita: 'Chiedi quantità',

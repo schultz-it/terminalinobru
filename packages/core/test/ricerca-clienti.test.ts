@@ -109,4 +109,17 @@ describe('clienteDocumento', () => {
       citta: 'Brescia',
     });
   });
+
+  it("per un cliente di Easyfatt senza codice usa l'id; per uno creato in app no", () => {
+    const senzaCodice: Cliente = {
+      id: '0018',
+      nome: 'Ceramiche',
+      origine: 'easyfatt',
+      aggiornatoIl: 'x',
+    };
+    expect(clienteDocumento(senzaCodice)).toEqual({ codice: '0018', nome: 'Ceramiche' });
+    expect(
+      clienteDocumento({ id: 'uuid', nome: 'Nuovo', origine: 'app', aggiornatoIl: 'x' }),
+    ).toEqual({ nome: 'Nuovo' });
+  });
 });

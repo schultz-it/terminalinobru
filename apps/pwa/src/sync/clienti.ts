@@ -64,9 +64,10 @@ export async function applicaClienti(
   await db.transaction('rw', [db.clienti, db.impostazioni], async () => {
     if (completa) await db.clienti.where('origine').equals('easyfatt').delete();
     // Il bridge conserva solo l'export di Easyfatt: un cliente con altra origine non è previsto.
-    const vivi = risposta.clienti.filter(
-      (cliente) => cliente.eliminatoIl === undefined && cliente.origine === 'easyfatt',
-    );
+    // `GET /api/clienti` non ripete il codice, che è l'id: lo si rimette per cercarlo e mostrarlo.
+    const vivi = risposta.clienti
+      .filter((cliente) => cliente.eliminatoIl === undefined && cliente.origine === 'easyfatt')
+      .map((cliente) => ({ ...cliente, codice: cliente.codice ?? cliente.id }));
     const morti = risposta.clienti
       .filter((cliente) => cliente.eliminatoIl !== undefined)
       .map((cliente) => cliente.id);

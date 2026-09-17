@@ -2,7 +2,7 @@ import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import type { SessioneLocale } from '../db.js';
 import { formattaDataOra, formattaNumero } from '../formato.js';
-import { ETICHETTE_TIPO } from '../sessioni/modello.js';
+import { DESCRIZIONI_STATO_DDT, ETICHETTE_TIPO, etichettaOrdine } from '../sessioni/modello.js';
 import { ChipStato } from './ChipStato.js';
 import { IconaTipo } from './IconaTipo.js';
 
@@ -38,6 +38,20 @@ export function ElencoSessioni({
                   {conteggio === 1 ? 'riga' : 'righe'} ·{' '}
                   {formattaDataOra(sessione.chiusaIl ?? sessione.creataIl)}
                 </span>
+                {sessione.tipo === 'ddt' && sessione.cliente && (
+                  <span className="etichetta block break-words">{sessione.cliente.nome}</span>
+                )}
+                {sessione.tipo === 'ddt' && sessione.numeroDocumento !== undefined && (
+                  <span className="block text-sm font-semibold">
+                    {etichettaOrdine(sessione.numeroDocumento)}
+                    {sessione.stato !== 'aperta' && (
+                      <span className="font-normal text-grigio-testo">
+                        {' · '}
+                        {DESCRIZIONI_STATO_DDT[sessione.stato]}
+                      </span>
+                    )}
+                  </span>
+                )}
                 {inCoda.has(sessione.id) && (
                   <span className="block text-sm font-semibold text-arancio">
                     In attesa di invio

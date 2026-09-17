@@ -43,12 +43,17 @@ const CAMPI_DOCUMENTO = Object.keys(schemaClienteDocumento.shape) as CampoClient
 /**
  * Copia dei campi di un'anagrafica che viaggiano nella sessione e finiscono nel documento
  * (`Sessione.cliente`): restano fuori id, origine, listino e date, che servono solo al telefono.
+ * Per un cliente di Easyfatt l'id è il suo codice (docs/MODELLO-DATI.md sezione 1): se il campo
+ * `codice` manca, lo si ricava dall'id, così il documento porta `CustomerCode`.
  */
 export function clienteDocumento(cliente: Cliente): ClienteDocumento {
   const documento: ClienteDocumento = { nome: cliente.nome };
   for (const campo of CAMPI_DOCUMENTO) {
     const valore = cliente[campo];
     if (valore !== undefined) documento[campo] = valore;
+  }
+  if (documento.codice === undefined && cliente.origine === 'easyfatt') {
+    return { codice: cliente.id, ...documento };
   }
   return documento;
 }
