@@ -61,6 +61,20 @@ describe('POST /api/clienti/importa', () => {
     expect(risposta.status).toBe(400);
   });
 
+  it('dice quale cliente e quale campo non vanno', async () => {
+    const tenant = await creaTenant();
+    const risposta = await chiamaApiConCorpo('POST', '/api/clienti/importa', tenant.token, {
+      clienti: [
+        { id: 'C001', nome: 'Buono', origine: 'easyfatt', aggiornatoIl: '2026-09-17T10:00:00Z' },
+        { id: '0716', nome: 'Rossi', provincia: 'FORLI', origine: 'easyfatt', aggiornatoIl: 'x' },
+      ],
+    });
+    expect(risposta.status).toBe(400);
+    expect(await risposta.json()).toEqual({
+      errore: 'Cliente 0716 non valido (campo provincia): La provincia deve essere di 2 lettere.',
+    });
+  });
+
   it('rifiuta un corpo senza il campo clienti', async () => {
     const tenant = await creaTenant();
     const risposta = await chiamaApiConCorpo('POST', '/api/clienti/importa', tenant.token, {

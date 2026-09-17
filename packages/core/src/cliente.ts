@@ -57,3 +57,33 @@ export function clienteDocumento(cliente: Cliente): ClienteDocumento {
   }
   return documento;
 }
+
+/** Campo scartato da {@link ripulisciCliente}: nome, valore originale e motivo. */
+export type CampoScartato = { campo: CampoCliente; valore: string; messaggio: string };
+
+/**
+ * Toglie da un'anagrafica i campi facoltativi che non rispettano lo schema, invece di rifiutare
+ * l'intero cliente: l'export di Easyfatt contiene dati scritti a mano (provincia per esteso, email
+ * incomplete, codici destinatario troncati) e un solo campo sporco non deve bloccare l'importazione
+ * di tutto l'elenco. Il nome, obbligatorio, non viene toccato. Vedi docs/DECISIONI.md punto 65.
+ */
+export function ripulisciCliente(cliente: Cliente): {
+  cliente: Cliente;
+  scartati: CampoScartato[];
+} {
+  const pulito: Cliente = { ...cliente };
+  const scartati: CampoScartato[] = [];
+  for (const campo of CAMPI_DOCUMENTO) {
+    const valore = pulito[campo];
+    if (campo === 'nome' || valore === undefined) continue;
+    const esito = schemaClienteDocumento.shape[campo].safeParse(valore);
+    if (esito.success) continue;
+    delete pulito[campo];
+    scartati.push({
+      campo,
+      valore,
+      messaggio: esito.error.issues[0]?.message ?? 'Valore non valido.',
+    });
+  }
+  return { cliente: pulito, scartati };
+}

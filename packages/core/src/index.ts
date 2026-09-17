@@ -45,7 +45,14 @@ export type {
 export { validaCliente } from './cliente.js';
 /** Campi di un'anagrafica che finiscono nel documento, senza quelli solo del telefono. */
 export { clienteDocumento } from './cliente.js';
-export type { CampoCliente, DatiCliente, EsitoValidazioneCliente } from './cliente.js';
+/** Toglie da un cliente importato i campi facoltativi non validi, elencandoli. */
+export { ripulisciCliente } from './cliente.js';
+export type {
+  CampoCliente,
+  CampoScartato,
+  DatiCliente,
+  EsitoValidazioneCliente,
+} from './cliente.js';
 
 /** Somma le quantità per codice prodotto, nell'ordine di prima comparsa. */
 export { aggregaRighe } from './aggrega.js';

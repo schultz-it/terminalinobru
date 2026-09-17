@@ -53,10 +53,22 @@ rotteClienti.post('/importa', async (c) => {
   }
 
   const clienti: Cliente[] = [];
-  for (const elemento of grezzi) {
+  for (const [indice, elemento] of grezzi.entries()) {
     const esito = schemaCliente.safeParse(elemento);
     if (!esito.success) {
-      return c.json({ errore: 'Cliente non valido: verifica i campi obbligatori.' }, 400);
+      // Chi carica il file deve poter trovare il cliente in Easyfatt: codice e primo errore.
+      const id =
+        typeof elemento === 'object' && elemento !== null && 'id' in elemento
+          ? String((elemento as { id: unknown }).id)
+          : `in posizione ${indice + 1}`;
+      const problema = esito.error.issues[0];
+      const campo = problema?.path.join('.') ?? '';
+      return c.json(
+        {
+          errore: `Cliente ${id} non valido${campo === '' ? '' : ` (campo ${campo})`}: ${problema?.message ?? 'verifica i campi obbligatori.'}`,
+        },
+        400,
+      );
     }
     clienti.push(esito.data);
   }

@@ -88,6 +88,22 @@ describe('analizzaClientiTabella', () => {
     ]);
   });
 
+  it('toglie spazi, trattini e punti da partita IVA e codice fiscale', () => {
+    // Casi dell'export reale (collaudo T10).
+    const { clienti } = analizzaClientiTabella(
+      [
+        ['Cod.', 'Denominazione', 'Partita Iva', 'Codice fiscale'],
+        ['1', 'Estero', 'us12-34-56789', 'rssmra 80a01 h501u'],
+        ['2', 'Italia', '0123.456.789', ''],
+      ],
+      opzioni,
+    );
+    expect(clienti.map((c) => [c.partitaIva, c.codiceFiscale])).toEqual([
+      ['US123456789', 'RSSMRA80A01H501U'],
+      ['00123456789', undefined],
+    ]);
+  });
+
   it('ignora le righe vuote tenendo la numerazione di Excel', () => {
     const { clienti, avvisi } = analizzaClientiTabella(
       [

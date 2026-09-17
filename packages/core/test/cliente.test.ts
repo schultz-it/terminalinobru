@@ -4,6 +4,7 @@ import {
   schemaCliente,
   schemaClienteDocumento,
   schemaSessione,
+  ripulisciCliente,
   validaCliente,
 } from '../src/index.js';
 
@@ -150,5 +151,42 @@ describe('validaCliente', () => {
         email: "L'email non è valida.",
       },
     });
+  });
+});
+
+describe('ripulisciCliente', () => {
+  const base = {
+    id: '0716',
+    codice: '0716',
+    nome: 'Rossi',
+    origine: 'easyfatt' as const,
+    aggiornatoIl: 'x',
+  };
+
+  it('lascia intatto un cliente valido', () => {
+    const cliente = { ...base, ...COMPLETO, id: 'C001' };
+    expect(ripulisciCliente(cliente)).toEqual({ cliente, scartati: [] });
+  });
+
+  // Casi dell'export reale di Imballaggi Brunelli (collaudo T10): il bridge rifiutava l'intero elenco.
+  it("toglie i campi sporchi dell'export reale e li elenca, tenendo il resto", () => {
+    const esito = ripulisciCliente({
+      ...base,
+      citta: 'Forlì',
+      provincia: 'FORLI',
+      codiceFiscale: 'RSSMRA80A01H501',
+      sdi: 'M5UXC1',
+      email: 'info@rossi',
+      partitaIva: '01234567890',
+    });
+    expect(esito.cliente).toEqual({ ...base, citta: 'Forlì', partitaIva: '01234567890' });
+    expect(esito.scartati.map((s) => [s.campo, s.valore])).toEqual([
+      ['codiceFiscale', 'RSSMRA80A01H501'],
+      ['provincia', 'FORLI'],
+      ['sdi', 'M5UXC1'],
+      ['email', 'info@rossi'],
+    ]);
+    expect(esito.scartati[1]?.messaggio).toBe('La provincia deve essere di 2 lettere.');
+    expect(schemaCliente.safeParse(esito.cliente).success).toBe(true);
   });
 });
