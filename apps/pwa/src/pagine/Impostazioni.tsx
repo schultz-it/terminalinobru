@@ -20,6 +20,7 @@ import { preparaAudio } from '../scanner/feedback.js';
 import { Scanner } from '../scanner/Scanner.js';
 import type { EsitoLettura } from '../scanner/tipi.js';
 import { avviaSincronizzazione, useStatoSync } from '../sync/statoSync.js';
+import { descriviVersione } from '../versione.js';
 
 /** Numero con il sostantivo al singolare o al plurale. */
 function quanti(numero: number, singolare: string, plurale: string): string {
@@ -466,6 +467,7 @@ export function Impostazioni() {
       <footer className="flex flex-col items-center gap-1 pt-4 pb-2">
         <img src={logo} alt="imballare.net" className="h-8 w-auto" />
         <p className="etichetta">TerminalinoBru</p>
+        <p className="etichetta text-center text-xs">{descriviVersione()}</p>
       </footer>
     </Pagina>
   );

@@ -82,6 +82,9 @@ Cloudflare può compilare e pubblicare il progetto da solo, a ogni modifica unit
    produzione deve essere `pnpm --filter bridge exec wrangler versions upload --env produzione`
    (carica una versione senza pubblicarla): con `wrangler deploy` lì, ogni push di un branch
    ancora da revisionare finirebbe in produzione (decisione 64).
+   In fondo alla pagina Impostazioni della PWA compare "Versione … · build <commit> del
+   <data>": il commit è quello della build di Cloudflare, così si vede subito se un telefono ha
+   l'ultimo build (l'app si aggiorna da sola alla riapertura, quando è online).
 3. Verifica aprendo `https://terminalinobru.<il-tuo-account>.workers.dev/api/salute` nel browser:
    deve rispondere `{"ok":true}`. Poi apri l'indirizzo senza `/api/salute`: deve comparire la
    PWA. L'indirizzo esatto lo trovi nella stessa pagina del Worker (pulsante **Visit**).

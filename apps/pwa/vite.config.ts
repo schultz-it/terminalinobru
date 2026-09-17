@@ -3,8 +3,26 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwind from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import pacchetto from './package.json' with { type: 'json' };
+
+/**
+ * Versione mostrata in fondo a Impostazioni: numero dal package.json, commit dalla build di
+ * Cloudflare (`WORKERS_CI_COMMIT_SHA`) o da `VERSIONE_COMMIT`, data del build. Senza Node nei
+ * tipi della PWA si legge `process.env` da `globalThis`.
+ */
+const ambiente =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const commit = ambiente['VERSIONE_COMMIT'] ?? ambiente['WORKERS_CI_COMMIT_SHA'] ?? '';
+const versioneApp = {
+  numero: pacchetto.version,
+  commit: commit === '' ? 'sviluppo' : commit.slice(0, 7),
+  data: new Date().toISOString(),
+};
 
 export default defineConfig({
+  define: {
+    __VERSIONE_APP__: JSON.stringify(versioneApp),
+  },
   plugins: [
     react(),
     tailwind(),
