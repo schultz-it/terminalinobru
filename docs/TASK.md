@@ -324,7 +324,10 @@ Implementa le sessioni di lavoro nella PWA (docs/ARCHITETTURA.md sezioni 3.2, 3.
 Note da T06: `Scanner` espone `onCodice(codice, sorgente)` e usa l'esito restituito (`trovato` |
 `sconosciuto` | `ignorato`) per suono e vibrazione; il lettore Bluetooth è ascoltato solo mentre
 `Scanner` è montato, quindi nella schermata sessione tienilo montato; l'anti-rimbalzo riemette un
-codice fermo nell'inquadratura solo dopo 1,5 s senza vederlo. In `codaUpload` esistono già voci
+codice fermo nell'inquadratura solo dopo 1,5 s senza vederlo. `Scanner` è un dialog a schermo
+intero (`fixed inset-0`) con un pannello inferiore che accetta `children`: nella schermata sessione
+metti lì riga corrente, elenco righe e chiusura, oppure aggiungi al componente una proprietà per la
+modalità incorporata; non duplicarlo. In `codaUpload` esistono già voci
 `{ tipo: 'barcode', riferimento: <barcode> }` create dall'abbinamento: `src/sync/coda.ts` le invia
 con `POST /api/barcode` leggendo l'abbinamento dallo store `barcode`, oltre alle sessioni
 (`riferimento` = id sessione).
