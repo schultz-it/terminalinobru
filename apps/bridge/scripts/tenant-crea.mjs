@@ -21,15 +21,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import QRCode from 'qrcode';
 
-/** Nome del binding D1 dichiarato in wrangler.toml: in locale wrangler lo usa per trovare il file SQLite. */
+/** Nome del binding D1 dichiarato in wrangler.toml. */
 const BINDING_DB = 'DB';
 
 /**
- * Nome del database D1 su Cloudflare. Con `--remote` si passa questo e non il binding: nel
- * wrangler.toml committato l'id del database è un segnaposto (lo sostituisce solo il workflow di
- * deploy), mentre per nome wrangler risolve il database direttamente dall'account.
+ * Ambiente di wrangler.toml con l'id vero del D1 di produzione. Con `--remote` va indicato:
+ * la sezione principale del file ha un id segnaposto per lo sviluppo locale, e wrangler la
+ * userebbe anche passando il nome del database invece del binding.
  */
-const NOME_DB_REMOTO = 'terminalinobru';
+const AMBIENTE_PRODUZIONE = 'produzione';
 
 /** Legge gli argomenti `--nome`, `--utente`, `--url` e il flag `--remote`. */
 function leggiArgomenti(argomenti) {
@@ -118,8 +118,8 @@ try {
     [
       'd1',
       'execute',
-      opzioni.remoto ? NOME_DB_REMOTO : BINDING_DB,
-      opzioni.remoto ? '--remote' : '--local',
+      BINDING_DB,
+      ...(opzioni.remoto ? ['--remote', '--env', AMBIENTE_PRODUZIONE] : ['--local']),
       '--yes',
       '--file',
       percorso,
