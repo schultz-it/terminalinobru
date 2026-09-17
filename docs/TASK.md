@@ -19,7 +19,7 @@ e test approfonditi, `low` per documentazione.
 | T03 | Bridge: schema, auth, catalogo | Opus 5 | high | fatto | [#3](https://github.com/schultz-it/TerminalinoBru/pull/3) |
 | T04 | Bridge: sessioni e barcode | Sonnet 5 | high | fatto | [#4](https://github.com/schultz-it/TerminalinoBru/pull/4) |
 | T05 | PWA: base, sync, ricerca, consultazione | Opus 5 | medium | fatto | [#5](https://github.com/schultz-it/TerminalinoBru/pull/5) |
-| T06 | PWA: scanner | Opus 5 | high | da fare | |
+| T06 | PWA: scanner | Opus 5 | high | fatto | [#6](https://github.com/schultz-it/TerminalinoBru/pull/6) |
 | T07 | PWA: sessioni ed export | Opus 5 | high | da fare | |
 | T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | da fare | |
 | T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | da fare | |
