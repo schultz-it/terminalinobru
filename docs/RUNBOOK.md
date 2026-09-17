@@ -20,7 +20,8 @@ con l'Easyfatt reale.
 
 Il database (D1) è dove vivono catalogo, sessioni e credenziali. Va creato una volta sola.
 
-1. Sul tuo computer, apri un terminale nella cartella del progetto TerminalinoBru.
+1. Sul tuo computer, apri un terminale nella cartella del progetto TerminalinoBru ed esegui
+   `pnpm install` (una volta sola, installa gli strumenti compreso `wrangler`).
 2. Accedi a Cloudflare da riga di comando (si apre il browser per il login):
 
    ```bash
@@ -60,9 +61,10 @@ Il deploy è automatico: **ogni volta che qualcosa viene unito nel branch `main`
 compila il progetto e lo pubblica su Cloudflare da solo**, applicando prima le eventuali modifiche
 al database. Non serve nessun comando manuale.
 
-1. Dopo aver impostato i tre secret (sezione 3), vai su GitHub, scheda **Actions**.
-2. Se il workflow "Deploy" non è già partito, aspetta il prossimo merge su `main`, oppure chiedi a
-   chi ha accesso allo sviluppo di rilanciarlo da quella scheda ("Re-run all jobs").
+1. Dopo aver impostato i tre secret (sezione 3), vai su GitHub, scheda **Actions**, voce
+   **Deploy** nell'elenco a sinistra.
+2. Premi **Run workflow** (a destra), lascia `main` e conferma. Le esecuzioni precedenti in rosso
+   sono normali: erano partite prima che i secret esistessero.
 3. Il workflow è verde quando finisce: significa che il Worker `terminalinobru` è online.
 4. Verifica aprendo `https://terminalinobru.<il-tuo-account>.workers.dev/api/salute` nel browser:
    deve rispondere `{"ok":true}`. L'indirizzo esatto lo trovi nella dashboard Cloudflare, sezione
