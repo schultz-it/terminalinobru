@@ -214,7 +214,34 @@ export async function sessioneCompleta(
 ): Promise<Sessione | undefined> {
   const sessione = await db.sessioni.get(id);
   if (!sessione) return undefined;
-  return { ...sessione, righe: await righeSessione(db, id) };
+  // `inviataIl` è un'annotazione del telefono: il bridge non la conosce.
+  const daSpedire: SessioneLocale = { ...sessione };
+  delete daSpedire.inviataIl;
+  return { ...daSpedire, righe: await righeSessione(db, id) };
+}
+
+/**
+ * Cancella dal telefono una sessione che il bridge non ha mai ricevuto: aperta oppure chiusa con
+ * l'invio ancora in coda. Una sessione già arrivata al bridge non si cancella da qui, altrimenti
+ * il PC continuerebbe a vederla (la cancellazione dal bridge arriva con la v2).
+ */
+export async function cancellaSessione(db: DatabaseTerminalino, id: string): Promise<void> {
+  await db.transaction('rw', db.sessioni, db.righe, db.codaUpload, async () => {
+    const sessione = await db.sessioni.get(id);
+    if (!sessione) return;
+    if (sessione.inviataIl !== undefined) {
+      throw new ErroreSessione(
+        'La sessione è già sul bridge: per ora si cancella solo dal PC, oppure riaprila e correggila.',
+      );
+    }
+    await db.righe.where('sessioneId').equals(id).delete();
+    await db.codaUpload
+      .where('tipo')
+      .equals('sessione')
+      .filter((voce) => voce.riferimento === id)
+      .delete();
+    await db.sessioni.delete(id);
+  });
 }
 
 /** Sessioni importate da più di {@link GIORNI_CONSERVAZIONE_IMPORTATE} giorni. */
