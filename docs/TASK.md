@@ -23,9 +23,11 @@ e test approfonditi, `low` per documentazione.
 | T07 | PWA: sessioni ed export | Opus 5 | high | fatto | [#7](https://github.com/schultz-it/TerminalinoBru/pull/7) |
 | T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | fatto | [#8](https://github.com/schultz-it/TerminalinoBru/pull/8) |
 | T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | fatto | [#9](https://github.com/schultz-it/TerminalinoBru/pull/9) |
+| T12 | v2 libreria: ordini XML, parametri ricezione, clienti CSV | Opus 5 | medium | da fare | |
+| T13 | v2 bridge: clienti, numerazione, ricezione documenti | Sonnet 5 | high | da fare | |
+| T14 | v2 PWA: clienti, cliente nel DDT, Esportazioni | Opus 5 | high | da fare | |
 | T10 | Collaudo con Easyfatt reale | Opus 5 | high | da fare | |
 | T11 | Guida utente | Sonnet 5 | low | da fare | |
-| T12 | v2: DDT completi via XML | Fable 5.1 | high | futuro | |
 
 ## Prompt comune di apertura
 
@@ -402,7 +404,7 @@ Criteri di accettazione: il workflow di deploy è valido (usa `act` o almeno una
 sintattica) e non contiene segreti; il runbook è seguibile da chi non è sviluppatore.
 ```
 
-## T10 — Collaudo con Easyfatt reale
+## T10 — Collaudo con Easyfatt reale (dopo T14)
 
 Modello: **Opus 5**, effort **high**. Branch `task/10-collaudo`. Lavoro assistito: il titolare
 esegue i passi in Easyfatt e riporta gli esiti nella chat.
@@ -443,10 +445,105 @@ brevi, niente gergo. Aggiungi screenshot solo se già presenti in repo. Aggiorna
 stato "in produzione" e i link.
 ```
 
-## T12 — v2: DDT completi via XML (futuro)
+## T12 — v2 libreria: ordini XML, parametri ricezione, clienti CSV
 
-Modello: **Fable 5.1**, effort **high**. Da pianificare dopo T10. Prevede: export clienti da
-Easyfatt (Excel) caricato sul bridge, scelta cliente in app, `generaDocumentiXml` in
-`packages/easyfatt` con DocumentType D, `/easyfatt/documenti` che serve i DDT chiusi nel
-range di date richiesto, strategia di deduplica verificata sul campo, stesso meccanismo per gli
-arrivi merce (H) con fornitore.
+Modello: **Opus 5**, effort **medium**. Branch `task/12-easyfatt-documenti`. Leggi anche
+`docs/PROTOCOLLI-DANEA.md` (sezioni 3 e 4), `docs/MODELLO-DATI.md` (sezione 1) e
+`docs/DECISIONI.md` (punti 52-55). Solo `packages/easyfatt` e `packages/core`.
+
+```
+Estendi le librerie per la v2 (DDT come ordini e-commerce), senza toccare bridge e PWA.
+
+- core: tipi `Cliente` e campi `clienteCodice`, `clienteNome`, `numeroDocumento` di `Sessione`
+  come in docs/MODELLO-DATI.md sezione 1, con schemi zod e `IMPOSTAZIONI_DEFAULT` invariato.
+- easyfatt, `generaDocumentiXml(documenti, opzioni)`: da documenti di dominio
+  `{ numero, data (Date), cliente: {codice, nome}, commento?, righe: {codice, descrizione?, quantita, um?}[] }`
+  a `EasyfattDocuments AppVersion="2" Creator="TerminalinoBru"`, un `Document` per documento con
+  `DocumentType` C, `CustomerCode`, `CustomerName`, `Date` yyyy-mm-dd, `Number`, `InternalComment`
+  e `Rows/Row` con `Code`, `Description` (se presente), `Qty` (punto decimale, max 3 decimali,
+  senza zeri inutili), `Um` (se presente). Niente `Price` (decisione 55); opzione
+  `listino?: string` che, se passata, aggiunge `PriceList`. Escape XML corretto, dichiarazione
+  UTF-8, CRLF non necessario. Sostituisce `generaDocumentiVuoto` (che resta per l'elenco vuoto).
+- `analizzaParametriRicezione(query: Record<string,string|undefined>)`: legge `appver`,
+  `firstdate`, `lastdate` (yyyy-mm-dd), `firstnum`, `lastnum` (interi ≥ 1); valori assenti →
+  undefined, valori malformati → errore con messaggio in italiano (`ErroreRicezione`).
+- `analizzaClientiCsv(testo)`: dall'export clienti di Easyfatt salvato come CSV (separatore `;`
+  o `,` rilevato, virgolette, BOM, CRLF) ai `Cliente`. Colonne abbinate per nome normalizzato:
+  codice (Codice, Cod., Codice cliente), nome (Denominazione, Ragione sociale, Nome, Nominativo),
+  partita IVA, codice fiscale, città, listino (numero 1-9 oppure "Listino N"). Restituisce
+  `{ clienti, avvisi }`: righe senza codice o nome scartate con avviso, codici duplicati con
+  avviso (vince l'ultima). Fixture in `test/fixture/clienti-*.csv` con almeno 3 varianti.
+- Test: copertura 100% come per il resto del pacchetto; un test confronta l'XML generato con una
+  fixture attesa carattere per carattere.
+```
+
+Criteri di accettazione: `pnpm -r test` verde con copertura 100% su easyfatt; l'XML della fixture
+è valido rispetto all'esempio Danea (sezione 4 di PROTOCOLLI-DANEA.md).
+
+## T13 — v2 bridge: clienti, numerazione, ricezione documenti
+
+Modello: **Sonnet 5**, effort **high**. Branch `task/13-bridge-documenti`. Leggi anche
+`docs/PROTOCOLLI-DANEA.md` (sezione 3), `docs/MODELLO-DATI.md` (sezioni 2 e 4),
+`docs/DECISIONI.md` (punti 52-55) e `apps/bridge/README.md`.
+
+```
+Porta il bridge alla v2: clienti, numerazione dei DDT e ricezione documenti da Easyfatt.
+
+- Migrazione `0002_clienti_documenti.sql`: tabella `cliente`, colonne `cliente_codice`,
+  `cliente_nome`, `numero_documento` su `sessione` con indice unico (tenant, numero),
+  `tenant.prossimo_numero_documento` e `tenant.ultimo_clienti_il`.
+- `POST /api/clienti/importa` (Bearer, corpo CSV grezzo, max 2 MB): `analizzaClientiCsv`, upsert
+  a blocchi e tombstone per gli assenti come il catalogo `full`, `ultimo_clienti_il` alla fine;
+  risposta `{ importati, eliminati, avvisi }`. `GET /api/clienti?dal=` con lo stesso schema del
+  catalogo (cursore = `ultimo_clienti_il`).
+- `POST /api/sessioni`: accetta `clienteCodice`/`clienteNome`; per i `ddt` assegna
+  `numero_documento` alla prima ricezione leggendo e incrementando
+  `tenant.prossimo_numero_documento` nella stessa `db.batch`; un upsert successivo della stessa
+  sessione non cambia il numero. Risposta con `numeroDocumento`. Elenco e dettaglio lo espongono.
+- `GET /easyfatt/documenti` (Basic): `analizzaParametriRicezione`; risponde con
+  `generaDocumentiXml` delle sessioni `ddt` non `aperta` del tenant con numero nell'intervallo
+  `firstnum..lastnum` e data di chiusura in `firstdate..lastdate` (parametri assenti = nessun
+  limite), righe aggregate con `aggregaRighe` e descrizione presa da `prodotto`. Le sessioni
+  servite per la prima volta passano a `esportata`; le sessioni con numero minore di `firstnum`
+  ancora `esportata` passano a `importata` (decisione 53). Errori in testo puro, mai JSON.
+  Registra nel log ogni richiesta con i parametri ricevuti (serve al collaudo).
+- Test: tutti gli endpoint, numerazione stabile su rispedizione, concorrenza di due POST ddt
+  (numeri diversi), filtri della ricezione, transizioni di stato, CSV con avvisi.
+- README del bridge aggiornato (tabella endpoint, come caricare i clienti con curl).
+```
+
+Criteri di accettazione: con due sessioni ddt caricate, `GET /easyfatt/documenti?appver=2`
+restituisce due `Document` numerati 1 e 2 e le segna `esportata`; una seconda chiamata con
+`firstnum=3` restituisce vuoto e le segna `importata`.
+
+## T14 — v2 PWA: clienti, cliente nel DDT, Esportazioni
+
+Modello: **Opus 5**, effort **high**. Branch `task/14-pwa-clienti`. Leggi anche
+`docs/MODELLO-DATI.md` (sezioni 1, 3 e 4), `docs/ARCHITETTURA.md` sezione 3.3,
+`docs/DECISIONI.md` (punti 52-55) e `docs/STILE.md` sezione 4.
+
+```
+Completa la v2 nella PWA.
+
+- Dexie versione 2 con lo store `clienti`; la sync del catalogo scarica anche `/api/clienti?dal=`
+  con il suo cursore (`cursoreClienti`), stesse regole del catalogo. Impostazioni e Home mostrano
+  anche il numero di clienti.
+- Nuova sessione di tipo DDT: campo "Cliente" obbligatorio con ricerca per nome, codice o partita
+  IVA (indice in memoria come per i prodotti, massimo 30 risultati), scelta con un tocco, cliente
+  mostrato nell'intestazione della sessione e nel riepilogo. Se non ci sono clienti sincronizzati,
+  messaggio che rimanda a Esportazioni > Clienti.
+- Sessione chiusa e Home: per i DDT mostra "Ordine n. <numeroDocumento>" appena il bridge lo
+  assegna (dalla risposta del POST, salvato in Dexie) e lo stato (esportata = scaricato da
+  Easyfatt, importata).
+- Esportazioni (PC): sezione "Clienti" con caricamento del CSV (input file, `POST
+  /api/clienti/importa`), esito con avvisi, istruzioni su come esportare da Easyfatt (Clienti >
+  Esporta, salvare come CSV). Per le sessioni DDT il pulsante "Scarica terminale.txt" resta ma
+  le istruzioni dicono che il DDT arriva con Strumenti > Scarica ordini da e-Commerce e poi
+  "Genera da > DDT"; mostra il numero ordine nell'elenco.
+- Test: ricerca clienti, sync clienti con fetch finto, validazione della nuova sessione DDT.
+```
+
+Criteri di accettazione: con clienti caricati dal PC, sul telefono si crea un DDT scegliendo il
+cliente, si chiude, e in Esportazioni compare con il numero ordine; l'XML servito dal bridge
+contiene quel cliente e quelle righe.
+

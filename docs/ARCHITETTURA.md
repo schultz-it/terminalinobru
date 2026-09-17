@@ -35,7 +35,9 @@ Libreria pura, senza I/O, testata al 100%. È il cuore vendibile del progetto.
 - `analizzaCatalogo(xml)`: da `EasyfattProducts` (protocollo 2 e 3, modalità `full` e `incremental`) a prodotti, barcode aggiuntivi, codici eliminati.
 - `generaFileTerminale(righe, formato)`: da righe aggregate `{codice, quantita, lotto?, scadenza?}` al testo del file, rispettando la stringa formato di Easyfatt (campi delimitati o a spaziatura fissa, caratteri `A Q q L S X`).
 - `analizzaStringaFormato(stringa)`: valida e interpreta la stringa formato, per mostrare errori in app.
-- `generaDocumentiXml(documenti)` (v2): da documenti di dominio a `EasyfattDocuments`.
+- `generaDocumentiXml(documenti)` (v2): da documenti di dominio a `EasyfattDocuments` (ordini cliente `C` con cliente, numero e righe aggregate).
+- `analizzaParametriRicezione(query)` (v2): interpreta `appver`, `firstdate`, `lastdate`, `firstnum`, `lastnum` del polling.
+- `analizzaClientiCsv(testo)` (v2): dall'export clienti di Easyfatt (CSV) ai clienti di dominio, con abbinamento delle colonne per nome.
 
 Dettagli dei formati in `PROTOCOLLI-DANEA.md`.
 
@@ -52,7 +54,7 @@ Hono + D1. Un solo Worker che espone:
 | Metodo | Percorso | Auth | Scopo |
 | --- | --- | --- | --- |
 | POST | `/easyfatt/catalogo` | Basic (utente e password del tenant) | Riceve `EasyfattProducts` da Easyfatt, campo multipart `file`. Risponde `OK` in testo puro. Qualsiasi altro corpo Easyfatt lo mostra come errore. |
-| GET | `/easyfatt/documenti` | Basic | Polling ordini di Easyfatt. In v1 risponde un `EasyfattDocuments` vuoto. In v2 serve i DDT. |
+| GET | `/easyfatt/documenti` | Basic | Polling ordini di Easyfatt. In v2 serve le sessioni DDT chiuse come ordini cliente `C`, filtrate con `firstnum`/`lastnum`/`firstdate`/`lastdate`; la prima consegna segna `esportata`. |
 | GET | `/api/stato` | Bearer | Nome tenant, data ultimo catalogo, numero prodotti. Usato dalla schermata Impostazioni. |
 | GET | `/api/catalogo?dal=ISO` | Bearer | Prodotti e barcode modificati dopo `dal`, più codici eliminati. Senza `dal` restituisce tutto. |
 | POST | `/api/sessioni` | Bearer | Upsert di una sessione chiusa con le righe. Idempotente sull'`id` generato dal telefono. |
@@ -62,6 +64,8 @@ Hono + D1. Un solo Worker che espone:
 | PATCH | `/api/sessioni/:id` | Bearer | Cambio stato: `chiusa → esportata → importata`, oppure `esportata → chiusa` per rifare l'export. |
 | POST | `/api/barcode` | Bearer | Abbinamenti barcode → prodotto creati in app (origine `app`). |
 | GET | `/api/barcode/nuovi.csv` | Bearer | Abbinamenti creati in app, da riportare in Easyfatt. |
+| POST | `/api/clienti/importa` | Bearer | (v2) Carica l'export clienti CSV dal PC; sostituisce l'elenco (tombstone per gli assenti). |
+| GET | `/api/clienti?dal=ISO` | Bearer | (v2) Clienti modificati dopo `dal`, più i codici eliminati; senza `dal` tutti. |
 
 Gli asset della PWA (`apps/pwa/dist`) sono serviti dallo stesso Worker tramite binding `assets`,
 con fallback single-page. Percorsi `/api/*` e `/easyfatt/*` passano sempre dal Worker.
@@ -78,7 +82,7 @@ Regole:
 Vite + React + TypeScript + Tailwind. Installabile su Android da Chrome. Offline-first:
 
 - **Dexie** tiene catalogo, barcode, sessioni, righe e impostazioni in IndexedDB. Tutto funziona senza rete; il bridge serve solo a sincronizzare.
-- **Sync catalogo** manuale dalla schermata Impostazioni e automatica all'avvio se online e passate più di 6 ore. Delta tramite `dal`.
+- **Sync catalogo** manuale dalla schermata Impostazioni e automatica all'avvio se online e passate più di 6 ore. Delta tramite `dal`. In v2 la stessa sync scarica anche i clienti (`/api/clienti`).
 - **Upload sessioni** quando l'utente chiude una sessione; se offline resta in coda e riprova alla prossima apertura e al ritorno della rete.
 - **Stato delle sessioni**: `esportata` e `importata` li decide il bridge (dal PC). La PWA li legge da `GET /api/sessioni` dopo ogni giro della coda e aprendo Esportazioni, e aggiorna in sola lettura le sessioni locali non aperte e senza invio in coda.
 - **Ricerca** in memoria su indice costruito dai prodotti in Dexie: normalizzazione senza accenti e maiuscole, match per token su codice e descrizione, priorità ai prefissi di codice. Il catalogo atteso è di poche migliaia di righe, non serve un motore esterno.
@@ -113,12 +117,25 @@ scorta minima, ubicazione. La giacenza è quella al momento del push: in app si 
 
 Se lo stesso prodotto compare più volte nella sessione, l'export somma le quantità in una riga sola.
 
-### 3.3 DDT (v1)
+### 3.3 DDT (v2: ordine e-commerce)
 
-Identico all'inventario con tipo `ddt`, ma l'import avviene in un nuovo DDT in Easyfatt
-(righe documento, Utilità > Importa da terminale portatile) dopo aver scelto il cliente.
-Easyfatt registra lo scarico quando salva il DDT. In v2 il cliente si sceglie sul telefono e il
-DDT arriva completo via `/easyfatt/documenti`.
+1. Nuova sessione di tipo `ddt` con **scelta del cliente** sul telefono (ricerca per nome, codice
+   o partita IVA nell'elenco clienti sincronizzato dal bridge).
+2. Scansione e quantità come per l'inventario. Chiudi sessione: upload al bridge, che assegna un
+   **numero documento progressivo** per tenant.
+3. In Easyfatt: **Strumenti > Scarica ordini da e-Commerce**. Easyfatt chiede al bridge i
+   documenti dall'ultimo numero non importato; il bridge risponde con gli ordini cliente (`C`)
+   delle sessioni DDT, righe aggregate con codice e quantità. La prima consegna segna la sessione
+   `esportata`; quando Easyfatt chiede numeri successivi, le precedenti passano a `importata`.
+4. In Easyfatt l'ordine cliente si trasforma in DDT con "Genera da": lo scarico avviene al
+   salvataggio del DDT.
+
+L'elenco clienti arriva dall'export di Easyfatt (Clienti > Esporta, salvato come CSV) caricato
+dalla pagina Esportazioni sul PC. Il file del terminalino resta disponibile come ripiego.
+
+Motivo del cambio rispetto alla v1 (file terminalino importato in un DDT): nell'installazione
+cloud di Imballaggi Brunelli l'importazione da terminale portatile non è disponibile
+(`DECISIONI.md` punto 52).
 
 ### 3.4 Carico
 
@@ -153,7 +170,7 @@ l'importazione prodotti da Excel). Funzione da valutare sul campo.
 
 ## 6. Cosa è fuori scope in v1
 
-- DDT completi via XML con cliente scelto in app (v2).
+- DDT diretti (`DocumentType` D) e arrivi merce (H) via ricezione e-commerce: da verificare sul campo, per ora i DDT nascono come ordini cliente e il carico resta sul file del terminalino.
 - Lotti e scadenze: supportati nella libreria, assenti dalla UI.
 - Multi-magazzino: il campo esiste nel catalogo, la UI ne assume uno solo.
 - Agente Windows per depositare i file: non serve, si scarica dal browser.

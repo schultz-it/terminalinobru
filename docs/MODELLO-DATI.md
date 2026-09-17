@@ -50,7 +50,22 @@ type Sessione = {
   creataIl: string;
   chiusaIl?: string;
   dispositivo?: string;        // etichetta del telefono, da impostazioni
+  clienteCodice?: string;      // v2, solo ddt: cliente scelto sul telefono
+  clienteNome?: string;        // v2, copia per la visualizzazione offline
+  numeroDocumento?: number;    // v2, solo ddt: assegnato dal bridge alla ricezione
   righe?: Riga[];
+};
+
+// v2
+type Cliente = {
+  codice: string;              // chiave, codice anagrafica Easyfatt (CustomerCode)
+  nome: string;
+  partitaIva?: string;
+  codiceFiscale?: string;
+  citta?: string;
+  listino?: number;            // 1..9 se ricavabile dall'export
+  aggiornatoIl: string;
+  eliminatoIl?: string;
 };
 
 type Riga = {
@@ -142,9 +157,25 @@ CREATE TABLE sessione (
   chiusa_il TEXT NOT NULL,
   ricevuta_il TEXT NOT NULL,
   esportata_il TEXT,
-  importata_il TEXT
+  importata_il TEXT,
+  cliente_codice TEXT,            -- v2 (migrazione 0002)
+  cliente_nome TEXT,              -- v2
+  numero_documento INTEGER        -- v2: progressivo per tenant, assegnato alla ricezione dei ddt
 );
 CREATE INDEX sessione_tenant_stato ON sessione(tenant_id, stato, chiusa_il);
+CREATE UNIQUE INDEX sessione_numero ON sessione(tenant_id, numero_documento);  -- v2
+
+-- v2 (migrazione 0002): tenant.prossimo_numero_documento INTEGER NOT NULL DEFAULT 1
+CREATE TABLE cliente (
+  tenant_id TEXT NOT NULL REFERENCES tenant(id),
+  codice TEXT NOT NULL,
+  nome TEXT NOT NULL,
+  partita_iva TEXT, codice_fiscale TEXT, citta TEXT, listino INTEGER,
+  aggiornato_il TEXT NOT NULL,
+  eliminato_il TEXT,
+  PRIMARY KEY (tenant_id, codice)
+);
+CREATE INDEX cliente_aggiornato ON cliente(tenant_id, aggiornato_il);
 
 CREATE TABLE riga (
   id TEXT PRIMARY KEY,
@@ -170,6 +201,7 @@ Un `POST /api/sessioni` con `id` già presente sostituisce le righe (l'utente ha
 | `sessioni` | `id` | `stato`, `creataIl` | Tutte le sessioni, anche chiuse, finché non si fa pulizia. |
 | `righe` | `id` | `sessioneId`, `[sessioneId+ordine]` | |
 | `codaUpload` | `++id` | `tipo` | Sessioni e barcode da inviare al bridge quando torna la rete. Voce: `{ tipo, riferimento, creataIl, tentativi, ultimoErrore? }`; `riferimento` è l'id della sessione o il barcode abbinato (una voce per barcode, il corpo si legge dallo store `barcode` al momento dell'invio). |
+| `clienti` | `codice` | `nome` | v2. Specchio dell'elenco clienti del bridge, senza tombstone. |
 | `impostazioni` | `chiave` | | Coppie chiave/valore: i campi di `Impostazioni` più `cursoreCatalogo`, l'`aggiornatoIl` dell'ultima risposta di `/api/catalogo`. |
 
 ## 4. Forme JSON dell'API
@@ -199,7 +231,12 @@ successiva. È la data dell'ultimo invio riuscito del catalogo, non l'orologio d
 telefono (vedi `DECISIONI.md` punto 26). Senza `dal` la risposta è il catalogo completo.
 
 `POST /api/sessioni`: corpo `Sessione` con `righe` incluse e `stato: "chiusa"`. Risposta `201`
-con `{ "id": "...", "ricevutaIl": "..." }`. Stessa forma per `GET /api/sessioni/:id`.
+con `{ "id": "...", "ricevutaIl": "...", "numeroDocumento": 12 }` (v2: `numeroDocumento` solo per
+i `ddt`, assegnato alla prima ricezione e mai cambiato). Stessa forma per `GET /api/sessioni/:id`.
+
+v2: `GET /api/clienti?dal=ISO` risponde `{ "aggiornatoIl": "...", "clienti": [...], "clientiEliminati": ["C001"] }`
+con lo stesso cursore del catalogo (`tenant.ultimo_clienti_il`). `POST /api/clienti/importa` riceve
+il CSV (`text/csv`, corpo grezzo) e risponde `{ "importati": 120, "eliminati": 3, "avvisi": [] }`.
 
 `PATCH /api/sessioni/:id`: `{ "stato": "esportata" }`. Risposta `200` con la sessione aggiornata,
 `409` se la transizione non è ammessa.

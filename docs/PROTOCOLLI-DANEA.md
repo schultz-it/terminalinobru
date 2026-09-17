@@ -160,25 +160,40 @@ Formato numeri: punto decimale, niente separatore migliaia. Date ISO `aaaa-mm-gg
 quelli marcati "pubblica su e-commerce" (in Easyfatt ogni prodotto ha la spunta per sito). Se vale
 la seconda, i prodotti vanno spuntati in blocco per il sito del bridge.
 
-## 3. Ricezione documenti (e-commerce, usato in v2)
+## 3. Ricezione documenti (e-commerce, v2)
 
-Easyfatt fa `GET` all'URL configurato con parametri `appver=2`, e opzionali `firstdate`,
-`lastdate` (ISO), `firstnum`, `lastnum`. Stessa autenticazione del punto 2. La risposta è un
-`EasyfattDocuments`. Non esiste conferma di ricezione nel protocollo: la deduplica va gestita da noi
-(numerazione dedicata o stato "importato" segnato dall'utente). **Da verificare** come Easyfatt
-tratta un documento riproposto con lo stesso numero.
+Verificato il 2026-09-17 sulle pagine Danea "Specifiche tecniche e-commerce: ricezione ordini",
+"Tracciato Xml dei documenti", "Ricezione degli ordini di acquisto" e "Importazione dei documenti".
 
-Tipi documento ammessi in `DocumentType`: qualsiasi tipo del tracciato documenti, non solo ordini.
-Se omesso è ordine cliente.
+Easyfatt fa `GET` all'URL configurato con parametri `appver=2` e, opzionali, `firstdate`,
+`lastdate` (`yyyy-mm-dd`), `firstnum`, `lastnum`. Stessa autenticazione del punto 2. La risposta è
+un `EasyfattDocuments` (esempio nella sezione 4). In Easyfatt si lancia da **Strumenti > Scarica
+ordini da e-Commerce**, in automatico dall'URL o a mano da file; il programma "propone sempre di
+scaricare partendo dall'ultimo ordine non ancora importato": la deduplica è affidata al **numero
+del documento** (`Number`), che quindi deve essere progressivo e stabile per ogni documento, e il
+bridge deve rispettare `firstnum`/`lastnum` (e `firstdate`/`lastdate`) nella risposta.
 
-In v1 il bridge risponde con un documento vuoto valido:
+Gli ordini scaricati diventano **ordini cliente**; da lì "Genera da" produce DDT, fattura o
+ricevuta. Il cliente viene abbinato così: prima `CustomerCode` (o `CustomerWebLogin`), poi
+codice fiscale, partita IVA o e-mail; se nulla corrisponde viene creato un nuovo cliente.
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<EasyfattDocuments AppVersion="2" Creator="TerminalinoBru" CreatorUrl="">
-  <Documents></Documents>
-</EasyfattDocuments>
-```
+`DocumentType`: se omesso vale `C` (ordine cliente). Il tracciato ammette A, B, C, D, E, F, G, H,
+I, J, L, M, N, O, P, Q, R, S, ma la ricezione e-commerce è pensata per `C`. **Da verificare**: se il
+canale accetta anche `D` (DDT diretto) e `H` (arrivo merce); in v2 si usa `C` e il DDT lo genera
+Easyfatt con "Genera da", che è documentato.
+
+Tag utili del `Document`: `CustomerCode`, `CustomerName`, `Date`, `Number`, `Numbering`,
+`Warehouse`, `PriceList` (denominazione del listino), `InternalComment`, `CustomField1-4`. Tag di
+`Row`: `Code`, `Description`, `Qty`, `Um`, `Price`, `Discounts`, `VatCode`, `Notes`, `Stock`.
+Nessun tag è dichiarato obbligatorio. **Da verificare**: cosa fa Easyfatt con `Price` omesso
+(prezzo del listino del cliente, o zero) e se `PriceList` forza il listino; se `Description`
+omessa viene presa dall'archivio; cosa fa con un `Code` non in archivio (riga descrittiva o
+scarto).
+
+Vincolo emerso sul campo (2026-09-17): nell'installazione di Imballaggi Brunelli (Easyfatt in
+cloud) l'importazione da terminale portatile non è disponibile; ticket aperto con Danea. Per
+questo i DDT passano da questo canale (v2), mentre inventario e carico restano sul file del
+terminalino in attesa della risposta.
 
 ## 4. Easyfatt-XML documenti (v2)
 
