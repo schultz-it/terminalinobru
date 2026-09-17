@@ -41,3 +41,11 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 
 27. **Transizione `esportata → chiusa` ammessa.** Serve al pulsante "Riporta a chiusa" della pagina Esportazioni (T08): il file era stato scaricato ma non importato, e si vuole rifare l'export. Il bridge azzera `esportata_il`. Restano vietate le riaperture da `esportata` e da `importata` verso `aperta`.
 28. **L'id di sessione è chiave globale ma il tenant proprietario è vincolante.** Un `POST /api/sessioni` con un id già usato da un altro tenant risponde 409 invece di sovrascrivere. Gli UUID rendono la collisione improbabile, ma l'isolamento fra tenant non deve dipendere dal caso.
+
+## 2026-09-17 — T05
+
+29. **Il cursore del catalogo vive in una chiave Dexie separata (`cursoreCatalogo`), fuori da `Impostazioni`.** L'utente non lo vede e non lo modifica; `ultimaSincronizzazione` resta l'orologio del telefono e serve solo alla regola delle 6 ore e alla data mostrata. Il testo di T05 in `TASK.md` parlava di "ultima sincronizzazione salvata": allineato al punto 26.
+30. **Palette di Tailwind azzerata con `--color-*: initial`.** Una classe con un colore di Tailwind non produce CSS, quindi il vincolo di `STILE.md` ("solo i token del marchio") è verificato dal build e non solo a occhio.
+31. **Titolo della barra superiore in `nero`.** `STILE.md` sezione 3 diceva "grafite", sezione 1 "su giallo il testo è sempre nero": vale la regola di contrasto, la sezione 3 è stata corretta.
+32. **`zod` anche nella PWA, `fake-indexeddb` nei test.** Le risposte del bridge si validano con gli schemi di `core` prima di scriverle in Dexie: un bridge di versione diversa produce un messaggio, non dati corrotti. `fake-indexeddb` (solo dev) permette di provare Dexie sotto jsdom.
+33. **Il criterio "Lighthouse PWA installabile" non è più misurabile.** Lighthouse 12 ha tolto la categoria PWA; l'installabilità si verifica con Chrome (`Page.getInstallabilityErrors` vuoto, manifest valido, service worker attivo) e si riportano le altre categorie.

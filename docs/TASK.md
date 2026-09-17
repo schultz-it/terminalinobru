@@ -231,8 +231,9 @@ di aggancio.
   predefinita, suoni, vibrazione, nome dispositivo. Pulsante "Verifica connessione" che chiama
   `/api/stato` e mostra nome tenant, data ultimo catalogo, numero prodotti. Pulsante "Sincronizza
   catalogo".
-- Modulo `src/sync/catalogo.ts`: scarica `/api/catalogo?dal=` con l'ultima sincronizzazione
-  salvata, applica in una transazione Dexie (upsert e cancellazioni), salva la nuova data. Sync
+- Modulo `src/sync/catalogo.ts`: scarica `/api/catalogo?dal=` con il cursore `aggiornatoIl`
+  salvato dalla risposta precedente (mai l'orologio del telefono, vedi docs/MODELLO-DATI.md
+  sezione 4), applica in una transazione Dexie (upsert e cancellazioni), salva il nuovo cursore. Sync
   automatica all'avvio se online e sono passate più di 6 ore. Gestione errori con messaggio
   leggibile, mai crash. Un componente `StatoRete` mostra online/offline e data ultima sync.
 - Ricerca: `costruisciIndice` di core in un hook con cache in memoria invalidata dopo la sync;
@@ -248,7 +249,8 @@ di aggancio.
 
 Criteri di accettazione: con il bridge in dev e un catalogo caricato, la PWA sincronizza, cerca
 per codice e descrizione e mostra la scheda; con la rete spenta tutto continua a funzionare;
-Lighthouse PWA installabile (riporta i punteggi); screenshot di Home, Consultazione e Impostazioni
+installabilità verificata in Chrome (Lighthouse dalla versione 12 non ha più la categoria PWA:
+riporta i punteggi delle altre categorie); screenshot di Home, Consultazione e Impostazioni
 allegati alla PR, coerenti con docs/STILE.md.
 ```
 

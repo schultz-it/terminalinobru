@@ -34,6 +34,7 @@ Tailwind v4, in `apps/pwa/src/stile.css`:
 @import 'tailwindcss';
 
 @theme {
+  --color-*: initial; /* azzera la palette di Tailwind: una classe come bg-slate-100 non genera CSS */
   --color-giallo: #f2ce2e;
   --color-giallo-scuro: #d9b41a;
   --color-giallo-chiaro: #fbf3cc;
@@ -63,7 +64,7 @@ Non usare i colori di Tailwind (`slate`, `teal`, ecc.) nelle schermate: solo i t
 
 ## 3. Struttura delle schermate
 
-- **Barra superiore** gialla, alta 56 px: titolo della schermata in grafite, a sinistra il pulsante
+- **Barra superiore** gialla, alta 56 px: titolo della schermata in `nero`, a sinistra il pulsante
   indietro quando serve, a destra al massimo un'azione.
 - **Barra inferiore** bianca con bordo superiore `grigio-bordo`, 4 voci: Home, Consulta,
   Esportazioni, Impostazioni. Icona più etichetta; la voce attiva è in `nero` con sfondo `giallo`
