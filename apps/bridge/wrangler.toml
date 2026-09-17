@@ -16,3 +16,25 @@ binding = "DB"
 database_name = "terminalinobru"
 database_id = "da-compilare-al-primo-deploy"
 migrations_dir = "migrations"
+
+# Ambiente di produzione. Il worker si chiama "terminalinobru" (senza suffisso "-bridge")
+# perché è l'unico worker del progetto esposto in produzione. Bindings e asset non si
+# ereditano dalla sezione sopra: vanno ripetuti qui, come vuole Wrangler per gli ambienti
+# con nome. L'id del database di produzione non è in chiaro: il workflow di deploy lo
+# sostituisce dal secret CLOUDFLARE_D1_DATABASE_ID prima di eseguire `wrangler deploy`
+# (vedi .github/workflows/deploy.yml e docs/RUNBOOK.md). Per un deploy manuale, sostituire
+# il segnaposto a mano senza mai committare l'id reale se non strettamente necessario.
+[env.produzione]
+name = "terminalinobru"
+
+[env.produzione.assets]
+directory = "../pwa/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/easyfatt/*"]
+
+[[env.produzione.d1_databases]]
+binding = "DB"
+database_name = "terminalinobru"
+database_id = "__D1_DATABASE_ID_PRODUZIONE__"
+migrations_dir = "migrations"

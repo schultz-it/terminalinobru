@@ -74,3 +74,8 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 ## 2026-09-17 — Preparazione T09
 
 46. **Il QR di setup lo produce lo script del tenant, non un endpoint.** Il testo di T09 prevedeva `GET /api/setup-qr` con auth app: per chiamarlo servirebbe già il token che il QR deve consegnare al telefono. Lo script `tenant:crea` è l'unico momento in cui il token esiste in chiaro, quindi salva lì anche l'SVG del QR, da cancellare dopo l'uso.
+
+## 2026-09-17 — T09
+
+47. **L'id del D1 di produzione non è nel repository.** `wrangler.toml` tiene un segnaposto nella sezione `[env.produzione]`; il workflow di deploy lo sostituisce dal secret `CLOUDFLARE_D1_DATABASE_ID` prima delle migrazioni e del deploy. Per questo lo script `tenant:crea --remote` non può usare il binding `DB`: passa a wrangler il nome del database (`terminalinobru`), che viene risolto dall'account. In locale resta il binding, che wrangler usa per trovare il file SQLite. Deciso in revisione di T09.
+48. **Il deploy si avvia anche a mano.** `workflow_dispatch` sul workflow Deploy: il primo deploy avviene dopo aver impostato i secret, senza aspettare un altro merge su `main`.

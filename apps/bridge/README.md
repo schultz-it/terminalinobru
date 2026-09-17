@@ -52,11 +52,22 @@ pnpm --filter bridge tenant:crea -- --nome "Imballaggi Brunelli" --utente easyfa
 
 # database di produzione su Cloudflare
 pnpm --filter bridge tenant:crea -- --nome "Imballaggi Brunelli" --utente easyfatt --remote
+
+# con QR di setup per la PWA (vedi sotto)
+pnpm --filter bridge tenant:crea -- --nome "Imballaggi Brunelli" --utente easyfatt --remote \
+  --url https://<dominio>
 ```
 
 Lo script stampa nome, id, utente, **password Easyfatt** e **token app**. La password va nella
 configurazione e-commerce di Easyfatt, il token nelle impostazioni della PWA. Non esiste modo di
 rileggerli: se si perdono, si crea un nuovo tenant o si aggiornano gli hash a mano.
+
+Con `--url https://<dominio>` (lo stesso dominio del Worker), lo script salva anche
+`setup-<utente>.svg`: un QR del testo `terminalinobru://setup?url=...&token=...`, pensato per la
+schermata Impostazioni > Importa da QR della PWA. Il file contiene il token in chiaro: va aperto
+sul PC, inquadrato dal telefono e cancellato subito dopo. Non esiste un endpoint HTTP che generi
+lo stesso QR: per chiamarlo servirebbe già il token che il QR deve fornire, quindi può nascere solo
+qui, nell'unico momento in cui lo script lo conosce in chiaro.
 
 Prima del primo uso, applicare le migrazioni:
 
@@ -79,6 +90,14 @@ curl -u easyfatt:LA_PASSWORD \
   -F file=@packages/easyfatt/test/fixture/catalogo-full-v2.xml \
   http://localhost:8787/easyfatt/catalogo
 ```
+
+## Deploy in produzione
+
+Passo passo per il titolare in `docs/RUNBOOK.md`. In breve: il worker di produzione si chiama
+`terminalinobru` (sezione `[env.produzione]` di `wrangler.toml`) e il deploy avviene solo dalla CI,
+sul push su `main`, con il workflow `.github/workflows/deploy.yml`. Non esiste un comando di deploy
+manuale supportato: farlo a mano richiederebbe sostituire a mano il segnaposto
+`__D1_DATABASE_ID_PRODUZIONE__` in `wrangler.toml` con l'id reale, senza mai committarlo.
 
 ## Note di implementazione
 

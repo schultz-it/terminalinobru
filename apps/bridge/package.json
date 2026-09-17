@@ -20,6 +20,7 @@
     "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@cloudflare/workers-types": "^5.20260916.1",
     "pwa": "workspace:*",
+    "qrcode": "^1.5.4",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0",
     "wrangler": "^4.133.0"

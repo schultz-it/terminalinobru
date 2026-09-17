@@ -4,21 +4,34 @@
  *
  *   pnpm --filter bridge tenant:crea -- --nome "Imballaggi Brunelli" --utente easyfatt
  *   pnpm --filter bridge tenant:crea -- --nome "..." --utente "..." --remote
+ *   pnpm --filter bridge tenant:crea -- --nome "..." --utente "..." --remote --url https://bru.esempio.it
  *
  * Genera password Easyfatt e token app casuali, li stampa in chiaro una volta sola e salva nel
  * database soltanto i loro hash SHA-256. I valori in chiaro non sono recuperabili: vanno copiati
  * subito in Easyfatt e nelle impostazioni della PWA.
+ *
+ * Con `--url` salva anche `setup-<utente>.svg`: un QR del testo
+ * `terminalinobru://setup?url=...&token=...` da inquadrare con "Importa da QR" nella PWA. Il file
+ * contiene il token in chiaro e va cancellato subito dopo l'uso (vedi docs/RUNBOOK.md).
  */
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import QRCode from 'qrcode';
 
-/** Nome del binding D1 dichiarato in wrangler.toml. */
+/** Nome del binding D1 dichiarato in wrangler.toml: in locale wrangler lo usa per trovare il file SQLite. */
 const BINDING_DB = 'DB';
 
-/** Legge gli argomenti `--nome valore`, `--utente valore` e il flag `--remote`. */
+/**
+ * Nome del database D1 su Cloudflare. Con `--remote` si passa questo e non il binding: nel
+ * wrangler.toml committato l'id del database è un segnaposto (lo sostituisce solo il workflow di
+ * deploy), mentre per nome wrangler risolve il database direttamente dall'account.
+ */
+const NOME_DB_REMOTO = 'terminalinobru';
+
+/** Legge gli argomenti `--nome`, `--utente`, `--url` e il flag `--remote`. */
 function leggiArgomenti(argomenti) {
   const valori = { remoto: false };
   for (let indice = 0; indice < argomenti.length; indice += 1) {
@@ -29,12 +42,12 @@ function leggiArgomenti(argomenti) {
     }
     if (argomento === '--remote') {
       valori.remoto = true;
-    } else if (argomento === '--nome' || argomento === '--utente') {
+    } else if (argomento === '--nome' || argomento === '--utente' || argomento === '--url') {
       const valore = argomenti[indice + 1];
       if (valore === undefined || valore.startsWith('--')) {
         errore(`Manca il valore dopo ${argomento}.`);
       }
-      valori[argomento === '--nome' ? 'nome' : 'utente'] = valore;
+      valori[{ '--nome': 'nome', '--utente': 'utente', '--url': 'url' }[argomento]] = valore;
       indice += 1;
     } else {
       errore(`Argomento non riconosciuto: ${argomento}.`);
@@ -47,7 +60,8 @@ function leggiArgomenti(argomenti) {
 function errore(messaggio) {
   console.error(`Errore: ${messaggio}`);
   console.error(
-    'Uso: pnpm --filter bridge tenant:crea -- --nome "Nome azienda" --utente utente [--remote]',
+    'Uso: pnpm --filter bridge tenant:crea -- --nome "Nome azienda" --utente utente ' +
+      '[--remote] [--url https://dominio]',
   );
   process.exit(1);
 }
@@ -72,6 +86,9 @@ if (opzioni.nome === undefined || opzioni.nome.trim() === '')
   errore('Il nome del tenant è obbligatorio.');
 if (opzioni.utente === undefined || opzioni.utente.trim() === '') {
   errore("L'utente Easyfatt è obbligatorio.");
+}
+if (opzioni.url !== undefined && !opzioni.url.startsWith('https://')) {
+  errore('--url deve iniziare con https://.');
 }
 
 const id = randomUUID();
@@ -101,7 +118,7 @@ try {
     [
       'd1',
       'execute',
-      BINDING_DB,
+      opzioni.remoto ? NOME_DB_REMOTO : BINDING_DB,
       opzioni.remoto ? '--remote' : '--local',
       '--yes',
       '--file',
@@ -137,3 +154,14 @@ Tenant creato${opzioni.remoto ? ' sul database remoto' : ' sul database locale'}
 Questi valori non sono più recuperabili: il database contiene solo gli hash SHA-256.
 Copiali adesso in Easyfatt (Opzioni > Moduli > E-commerce) e nelle impostazioni della PWA.
 `);
+
+if (opzioni.url !== undefined) {
+  const testoQr = `terminalinobru://setup?url=${encodeURIComponent(opzioni.url)}&token=${encodeURIComponent(token)}`;
+  const percorsoQr = `setup-${opzioni.utente.trim()}.svg`;
+  const svg = await QRCode.toString(testoQr, { type: 'svg' });
+  writeFileSync(percorsoQr, svg, { mode: 0o600 });
+  console.log(
+    `QR di setup salvato in ${percorsoQr}. Contiene il token in chiaro: aprilo sul PC, ` +
+      'inquadralo dal telefono in Impostazioni > Importa da QR, poi cancella il file.\n',
+  );
+}
