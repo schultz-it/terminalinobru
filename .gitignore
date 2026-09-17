@@ -10,3 +10,6 @@ coverage/
 *.log
 .vite/
 .turbo/
+
+# QR di setup generati da `tenant:crea`: contengono il token in chiaro, non vanno committati.
+setup-*.svg
