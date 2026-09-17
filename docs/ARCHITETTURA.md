@@ -37,7 +37,7 @@ Libreria pura, senza I/O, testata al 100%. È il cuore vendibile del progetto.
 - `analizzaStringaFormato(stringa)`: valida e interpreta la stringa formato, per mostrare errori in app.
 - `generaDocumentiXml(documenti)` (v2): da documenti di dominio a `EasyfattDocuments` (ordini cliente `C` con cliente, numero e righe aggregate).
 - `analizzaParametriRicezione(query)` (v2): interpreta `appver`, `firstdate`, `lastdate`, `firstnum`, `lastnum` del polling.
-- `analizzaClientiCsv(testo)` (v2): dall'export clienti di Easyfatt (CSV) ai clienti di dominio, con abbinamento delle colonne per nome.
+- `analizzaClientiTabella(righe)` e `leggiCsv(testo)` (v2): dall'export clienti "Soggetti" di Easyfatt (Excel letto nel browser, o CSV) ai clienti di dominio, con abbinamento delle colonne per nome.
 
 Dettagli dei formati in `PROTOCOLLI-DANEA.md`.
 
@@ -64,7 +64,7 @@ Hono + D1. Un solo Worker che espone:
 | PATCH | `/api/sessioni/:id` | Bearer | Cambio stato: `chiusa → esportata → importata`, oppure `esportata → chiusa` per rifare l'export. |
 | POST | `/api/barcode` | Bearer | Abbinamenti barcode → prodotto creati in app (origine `app`). |
 | GET | `/api/barcode/nuovi.csv` | Bearer | Abbinamenti creati in app, da riportare in Easyfatt. |
-| POST | `/api/clienti/importa` | Bearer | (v2) Carica l'export clienti CSV dal PC; sostituisce l'elenco (tombstone per gli assenti). |
+| POST | `/api/clienti/importa` | Bearer | (v2) Riceve i clienti già interpretati dalla PWA dall'export Excel di Easyfatt; sostituisce l'elenco (tombstone per gli assenti). |
 | GET | `/api/clienti?dal=ISO` | Bearer | (v2) Clienti modificati dopo `dal`, più i codici eliminati; senza `dal` tutti. |
 
 Gli asset della PWA (`apps/pwa/dist`) sono serviti dallo stesso Worker tramite binding `assets`,
@@ -130,8 +130,8 @@ Se lo stesso prodotto compare più volte nella sessione, l'export somma le quant
 4. In Easyfatt l'ordine cliente si trasforma in DDT con "Genera da": lo scarico avviene al
    salvataggio del DDT.
 
-L'elenco clienti arriva dall'export di Easyfatt (Clienti > Esporta, salvato come CSV) caricato
-dalla pagina Esportazioni sul PC. Il file del terminalino resta disponibile come ripiego.
+L'elenco clienti arriva dall'export Excel di Easyfatt (Clienti > Esporta) caricato dalla pagina
+Esportazioni sul PC, che lo legge nel browser e lo manda al bridge. Il file del terminalino resta disponibile come ripiego.
 
 Motivo del cambio rispetto alla v1 (file terminalino importato in un DDT): nell'installazione
 cloud di Imballaggi Brunelli l'importazione da terminale portatile non è disponibile
