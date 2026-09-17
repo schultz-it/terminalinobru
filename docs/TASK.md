@@ -24,7 +24,7 @@ e test approfonditi, `low` per documentazione.
 | T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | fatto | [#8](https://github.com/schultz-it/TerminalinoBru/pull/8) |
 | T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | fatto | [#9](https://github.com/schultz-it/TerminalinoBru/pull/9) |
 | T12 | v2 libreria: ordini XML, parametri ricezione, clienti da export | Opus 5 | medium | fatto | [#12](https://github.com/schultz-it/TerminalinoBru/pull/12) |
-| T13 | v2 bridge: clienti, numerazione, ricezione documenti | Sonnet 5 | high | da fare | |
+| T13 | v2 bridge: clienti, numerazione, ricezione documenti | Sonnet 5 | high | fatto | [#13](https://github.com/schultz-it/TerminalinoBru/pull/13) |
 | T14 | v2 PWA: clienti, cliente nel DDT, Esportazioni | Opus 5 | high | da fare | |
 | T10 | Collaudo con Easyfatt reale | Opus 5 | high | da fare | |
 | T11 | Guida utente | Sonnet 5 | low | da fare | |
@@ -546,7 +546,7 @@ restituisce due `Document` numerati 1 e 2 e le segna `esportata`; una seconda ch
 
 Modello: **Opus 5**, effort **high**. Branch `task/14-pwa-clienti`. Leggi anche
 `docs/MODELLO-DATI.md` (sezioni 1, 3 e 4), `docs/ARCHITETTURA.md` sezione 3.3,
-`docs/DECISIONI.md` (punti 52-55) e `docs/STILE.md` sezione 4.
+`docs/DECISIONI.md` (punti 52-62) e `docs/STILE.md` sezione 4.
 
 ```
 Completa la v2 nella PWA.
