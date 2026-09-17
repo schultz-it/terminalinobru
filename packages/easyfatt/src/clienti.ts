@@ -165,11 +165,12 @@ function leggiListino(testo: string): number | undefined {
 }
 
 /**
- * Partita IVA o codice fiscale come li vuole Easyfatt: maiuscoli e, se numerici ma accorciati
- * da Excel (che perde gli zeri iniziali), riportati a 11 cifre.
+ * Partita IVA o codice fiscale come li vuole Easyfatt: maiuscoli, senza spazi, trattini e punti
+ * (nell'export reale compaiono "RSSMRA 80A01 H501U" e partite IVA estere con i trattini) e, se
+ * numerici ma accorciati da Excel (che perde gli zeri iniziali), riportati a 11 cifre.
  */
 function codiceFiscaleOIva(testo: string): string {
-  const maiuscolo = testo.toUpperCase();
+  const maiuscolo = testo.replace(/[\s.-]/g, '').toUpperCase();
   return /^\d+$/.test(maiuscolo) && maiuscolo.length < CIFRE_FISCALI
     ? maiuscolo.padStart(CIFRE_FISCALI, '0')
     : maiuscolo;

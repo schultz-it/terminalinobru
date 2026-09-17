@@ -4,6 +4,7 @@ import {
   ErroreFileClienti,
   importaClientiNelBridge,
   leggiFileClienti,
+  ripulisciTabella,
 } from '../src/esportazioni/clienti.js';
 import { indiceColonna, leggiXlsx, numeroComeTesto } from '../src/esportazioni/xlsx.js';
 import { fetchFinto } from './aiuti.js';
@@ -151,6 +152,38 @@ describe('leggiFileClienti', () => {
     await expect(leggiFileClienti(file('x.xlsx', 'non è uno zip'))).rejects.toThrow(
       'Excel .xlsx leggibile',
     );
+  });
+});
+
+describe('ripulisciTabella', () => {
+  it('toglie i campi che il bridge rifiuterebbe e li segnala negli avvisi', () => {
+    const cliente = {
+      id: '1001',
+      codice: '1001',
+      nome: 'Bianchi',
+      email: '**',
+      citta: 'Cesena',
+      origine: 'easyfatt' as const,
+      aggiornatoIl: '2026-09-17T10:00:00.000Z',
+    };
+    const esito = ripulisciTabella({
+      clienti: [cliente],
+      avvisi: ['Riga 3: manca il nome, riga scartata.'],
+    });
+    expect(esito.clienti).toEqual([
+      {
+        id: '1001',
+        codice: '1001',
+        nome: 'Bianchi',
+        citta: 'Cesena',
+        origine: 'easyfatt',
+        aggiornatoIl: '2026-09-17T10:00:00.000Z',
+      },
+    ]);
+    expect(esito.avvisi).toEqual([
+      'Riga 3: manca il nome, riga scartata.',
+      "Cliente 1001 (Bianchi): campo email «**» non caricato. L'email non è valida. Va corretto in Easyfatt.",
+    ]);
   });
 });
 
