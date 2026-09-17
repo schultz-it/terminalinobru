@@ -40,8 +40,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Font compresi: l'app deve aprirsi identica anche senza rete.
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // Font e wasm del lettore barcode compresi: l'app deve aprirsi identica anche senza rete.
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2,wasm}'],
         navigateFallback: '/index.html',
         // Le chiamate al bridge non passano mai dalla cache del service worker.
         navigateFallbackDenylist: [/^\/api\//, /^\/easyfatt\//],
