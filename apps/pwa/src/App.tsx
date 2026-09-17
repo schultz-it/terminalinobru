@@ -1,25 +1,49 @@
-import { useEffect, useState } from 'react';
-import { descriviEsito, verificaSalute, type EsitoSalute } from './salute.js';
+import { useEffect } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router';
+import { Layout } from './componenti/Layout.js';
+import { db } from './db.js';
+import { caricaImpostazioni } from './impostazioni.js';
+import { Consultazione } from './pagine/Consultazione.js';
+import { Home } from './pagine/Home.js';
+import { Impostazioni } from './pagine/Impostazioni.js';
+import { SchedaProdotto } from './pagine/SchedaProdotto.js';
+import { Esportazioni, Sessione } from './pagine/Segnaposto.js';
+import { serveSyncAutomatica } from './sync/catalogo.js';
+import { avviaSincronizzazione } from './sync/statoSync.js';
+
+/** All'avvio sincronizza il catalogo se si è online e l'ultima sync è di oltre 6 ore fa. */
+function useSyncAllAvvio() {
+  useEffect(() => {
+    void caricaImpostazioni(db)
+      .then((impostazioni) => {
+        const serve = serveSyncAutomatica({
+          online: navigator.onLine,
+          token: impostazioni.token,
+          ultimaSincronizzazione: impostazioni.ultimaSincronizzazione,
+          adesso: new Date(),
+        });
+        if (serve) return avviaSincronizzazione();
+        return undefined;
+      })
+      .catch((errore: unknown) => console.error('Sincronizzazione automatica non avviata', errore));
+  }, []);
+}
 
 export function App() {
-  const [esito, setEsito] = useState<EsitoSalute>({ stato: 'in-corso' });
-
-  useEffect(() => {
-    let annullato = false;
-    void verificaSalute().then((risultato) => {
-      if (!annullato) setEsito(risultato);
-    });
-    return () => {
-      annullato = true;
-    };
-  }, []);
-
+  useSyncAllAvvio();
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-slate-900">
-      <h1 className="text-3xl font-bold tracking-tight">TerminalinoBru</h1>
-      <p data-test="esito-salute" className="text-base text-slate-600">
-        {descriviEsito(esito)}
-      </p>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="consulta" element={<Consultazione />} />
+          <Route path="consulta/:codice" element={<SchedaProdotto />} />
+          <Route path="sessioni/:id" element={<Sessione />} />
+          <Route path="esportazioni" element={<Esportazioni />} />
+          <Route path="impostazioni" element={<Impostazioni />} />
+          <Route path="*" element={<Home />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
