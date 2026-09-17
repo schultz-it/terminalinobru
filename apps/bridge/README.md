@@ -8,7 +8,7 @@ distribuisce la PWA compilata come asset statico. Vedi `docs/ARCHITETTURA.md` se
 | Metodo | Percorso | Auth | Scopo |
 | --- | --- | --- | --- |
 | POST | `/easyfatt/catalogo` | Basic | Riceve `EasyfattProducts` nel campo multipart `file`. Risponde `OK` in testo puro. |
-| GET | `/easyfatt/documenti` | Basic | Polling dei documenti: in v1 un `EasyfattDocuments` vuoto. |
+| GET | `/easyfatt/documenti` | Basic | Polling dei documenti: in v1 un `EasyfattDocuments` vuoto (dal T13 in poi vedi sotto). |
 | GET | `/api/stato` | Bearer | Nome tenant, data ultimo catalogo, numero prodotti. |
 | GET | `/api/catalogo?dal=ISO` | Bearer | Catalogo completo o delta. |
 | GET | `/api/salute` | — | Diagnostica. |
@@ -17,7 +17,7 @@ distribuisce la PWA compilata come asset statico. Vedi `docs/ARCHITETTURA.md` se
 
 | Metodo | Percorso | Auth | Scopo |
 | --- | --- | --- | --- |
-| POST | `/api/sessioni` | Bearer | Upsert per `id` di una sessione chiusa con le righe. Risponde `{ id, ricevutaIl }`. |
+| POST | `/api/sessioni` | Bearer | Upsert per `id` di una sessione chiusa con le righe. Risponde `{ id, ricevutaIl }` (dal T13 anche `numeroDocumento` per i ddt). |
 | GET | `/api/sessioni?stato=` | Bearer | Elenco sessioni senza righe, con conteggio e somma delle quantità. |
 | GET | `/api/sessioni/:id` | Bearer | Dettaglio con le righe in ordine. |
 | PATCH | `/api/sessioni/:id` | Bearer | Cambio stato `chiusa → esportata → importata`. `409` se non ammesso. |
@@ -32,7 +32,8 @@ qualunque transizione che porterebbe a uno stato diverso da quei tre.
 
 Rinviare una sessione già ricevuta con lo stesso `id` (riapertura e richiusura sul telefono)
 sostituisce campi e righe, mantiene `ricevuta_il` del primo invio e riporta lo stato a `chiusa`,
-azzerando `esportata_il`/`importata_il`: l'export e l'import vanno rifatti.
+azzerando `esportata_il`/`importata_il`: l'export e l'import vanno rifatti. Per i ddt, `numero_documento`
+non viene mai toccato da un upsert successivo: si assegna una sola volta (vedi T13).
 
 Le risposte a Easyfatt sono sempre testo puro, mai JSON: qualsiasi corpo diverso da `OK` viene
 mostrato dentro Easyfatt come messaggio di errore, quindi è una frase in italiano.
@@ -40,6 +41,34 @@ mostrato dentro Easyfatt come messaggio di errore, quindi è una frase in italia
 L'autenticazione di Easyfatt accetta sia `Authorization: Basic <base64>` sia gli header
 `HTTP_X_AUTHORIZATION` e `X-Authorization` con il base64 di `utente:password`, con o senza il
 prefisso `Basic`.
+
+## Endpoint di questo task (T13)
+
+| Metodo | Percorso | Auth | Scopo |
+| --- | --- | --- | --- |
+| POST | `/api/clienti/importa` | Bearer | Sostituisce l'elenco clienti (JSON `{ clienti: Cliente[] }`, già interpretato dalla PWA dall'export Easyfatt): upsert a blocchi e tombstone per gli assenti, come il catalogo `full`. Risponde `{ importati, eliminati }`. Max 2 MB, max 5000 clienti. |
+| GET | `/api/clienti?dal=ISO` | Bearer | Clienti modificati dopo `dal`, più i codici eliminati; senza `dal` tutti. Stesso cursore del catalogo (`ultimo_clienti_il`). |
+| DELETE | `/api/sessioni/:id` | Bearer | Cancella sessione e righe. `204`. `409` se `esportata` o `importata` (Easyfatt l'ha già scaricata): non si può più far sparire da sotto. `404` se non esiste. |
+| GET | `/easyfatt/documenti` | Basic | Polling ordini: risponde con le sessioni `ddt` del tenant come ordini cliente (`DocumentType` C), filtrate su `firstnum`/`lastnum`/`firstdate`/`lastdate`. La prima consegna segna la sessione `esportata`; le sessioni con numero minore di `firstnum` ancora `esportata` passano a `importata` (docs/DECISIONI.md punto 53). |
+
+`POST /api/sessioni` accetta ora anche `cliente` (obbligatorio per i `ddt`, validato con lo schema
+di core): alla prima ricezione di un ddt il bridge gli assegna un `numeroDocumento` progressivo per
+tenant, leggendo e incrementando `tenant.prossimo_numero_documento` nello stesso `db.batch` della
+scrittura della sessione, così due invii concorrenti non si scontrano (D1 serializza le scritture).
+Il numero non cambia più, nemmeno se la sessione viene rispedita.
+
+Una sessione ddt senza cliente (può capitare solo per ddt di v1, mai passate dalla ricezione
+e-commerce, dopo la migrazione che assegna loro un numero) viene esclusa dalla risposta di
+`/easyfatt/documenti` con un avviso in log, invece di far fallire l'intera richiesta.
+
+Caricare i clienti con curl, come farebbe la pagina Esportazioni della PWA dopo aver interpretato
+l'export di Easyfatt:
+
+```bash
+curl -X POST -H "Authorization: Bearer IL_TOKEN" -H "Content-Type: application/json" \
+  -d '{"clienti":[{"id":"0018","origine":"easyfatt","nome":"Ceramiche Italiane","partitaIva":"03322350178","aggiornatoIl":"2026-09-17T10:00:00.000Z"}]}' \
+  http://localhost:8787/api/clienti/importa
+```
 
 ## Creare un tenant
 
@@ -115,3 +144,13 @@ con `wrangler d1 migrations apply DB --remote --env produzione`. Il workflow
   però Easyfatt invia lo stesso barcode, l'abbinamento passa a origine `easyfatt` e da quel momento
   è Easyfatt a possederlo.
 - Nessuna logica di protocollo sta qui: l'analisi dell'XML è in `packages/easyfatt`.
+- D1 accetta al massimo 100 parametri legati per statement: le query con `IN (...)` (descrizioni
+  dei prodotti e righe delle sessioni nella ricezione documenti) vanno a blocchi di
+  `PARAMETRI_PER_QUERY` elementi, come le scritture vanno a blocchi di `STATEMENT_PER_BLOCCO`.
+- L'importazione clienti (`POST /api/clienti/importa`) tratta l'elenco ricevuto come un catalogo
+  `full`: stesso schema di tombstone di `salvaCatalogo`, marcatore `tenant.ultimo_clienti_il`
+  scritto solo alla fine. Solo i clienti dell'export Easyfatt vivono su D1 (`origine: 'easyfatt'`):
+  quelli creati in app restano sul telefono e viaggiano dentro la sessione (`Sessione.cliente`).
+- `GET /easyfatt/documenti` legge la data di chiusura delle sessioni nel fuso `Europe/Rome`
+  (docs/DECISIONI.md punto 60) per confrontarla con `firstdate`/`lastdate`, che Easyfatt manda come
+  data di calendario senza fuso. Il filtro `firstnum`/`lastnum` invece è sempre sul numero.

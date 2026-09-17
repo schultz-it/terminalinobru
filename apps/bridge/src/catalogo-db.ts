@@ -10,6 +10,21 @@ import type { Catalogo } from '@terminalinobru/easyfatt';
 /** Numero massimo di statement per ogni chiamata a `db.batch` (limite pratico di D1). */
 export const STATEMENT_PER_BLOCCO = 50;
 
+/**
+ * D1 accetta al massimo 100 parametri legati per statement: le query con `IN (...)` vanno
+ * spezzate in blocchi di questa misura, lasciando spazio ai parametri fissi (tenant, date).
+ */
+export const PARAMETRI_PER_QUERY = 90;
+
+/** Spezza un elenco in blocchi di al più `PARAMETRI_PER_QUERY` elementi, per le query `IN (...)`. */
+export function aBlocchi<T>(elementi: readonly T[]): T[][] {
+  const blocchi: T[][] = [];
+  for (let inizio = 0; inizio < elementi.length; inizio += PARAMETRI_PER_QUERY) {
+    blocchi.push(elementi.slice(inizio, inizio + PARAMETRI_PER_QUERY));
+  }
+  return blocchi;
+}
+
 const INSERISCI_PRODOTTO = `
 INSERT INTO prodotto (
   tenant_id, codice, descrizione, categoria, sottocategoria, um,
@@ -180,6 +195,29 @@ export async function salvaCatalogo(
     .prepare('UPDATE tenant SET ultimo_catalogo_il = ?2 WHERE id = ?1')
     .bind(tenantId, aggiornatoIl)
     .run();
+}
+
+/**
+ * Descrizione dei prodotti indicati, per codice. Usata dalla ricezione documenti (v2), che riceve
+ * dalle sessioni solo il codice e deve completare la riga con la descrizione dal catalogo.
+ */
+export async function descrizioniProdotti(
+  db: D1Database,
+  tenantId: string,
+  codici: readonly string[],
+): Promise<Map<string, string>> {
+  const descrizioni = new Map<string, string>();
+  for (const blocco of aBlocchi([...new Set(codici)])) {
+    const segnaposto = blocco.map((_, indice) => `?${indice + 2}`).join(', ');
+    const risultato = await db
+      .prepare(
+        `SELECT codice, descrizione FROM prodotto WHERE tenant_id = ?1 AND codice IN (${segnaposto})`,
+      )
+      .bind(tenantId, ...blocco)
+      .all<{ codice: string; descrizione: string }>();
+    for (const riga of risultato.results) descrizioni.set(riga.codice, riga.descrizione);
+  }
+  return descrizioni;
 }
 
 /** Riga della tabella `prodotto` come arriva da D1. */

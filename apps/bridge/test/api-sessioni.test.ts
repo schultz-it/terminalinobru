@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { chiamaApi, chiamaApiConCorpo, creaTenant, sessioneDiProva } from './aiuti.js';
+import {
+  chiamaApi,
+  chiamaApiConCorpo,
+  chiamaApiMetodo,
+  clienteDocumentoDiProva,
+  creaTenant,
+  sessioneDdtDiProva,
+  sessioneDiProva,
+} from './aiuti.js';
 
 describe('POST /api/sessioni', () => {
   it('crea una sessione e la si ritrova nell elenco, nel dettaglio e nel file', async () => {
@@ -301,5 +309,182 @@ describe('autenticazione', () => {
         })
       ).status,
     ).toBe(401);
+  });
+});
+
+describe('DDT: cliente e numero documento (v2)', () => {
+  it('rifiuta un ddt senza cliente', async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDdtDiProva({ cliente: undefined });
+    const risposta = await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+    expect(risposta.status).toBe(400);
+    expect((await risposta.json()) as { errore: string }).toMatchObject({
+      errore: expect.stringContaining('cliente'),
+    });
+  });
+
+  it('assegna il numero alla prima ricezione e lo mantiene su un upsert successivo', async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDdtDiProva();
+
+    const creazione = await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+    expect(creazione.status).toBe(201);
+    const corpo = (await creazione.json()) as { numeroDocumento: number };
+    expect(corpo.numeroDocumento).toBe(1);
+
+    const dettaglio = (await (
+      await chiamaApi(`/api/sessioni/${sessione.id}`, tenant.token)
+    ).json()) as { numeroDocumento: number; cliente: { nome: string } };
+    expect(dettaglio.numeroDocumento).toBe(1);
+    expect(dettaglio.cliente.nome).toBe(clienteDocumentoDiProva().nome);
+
+    // Un secondo invio (riapertura e richiusura sul telefono) non cambia il numero.
+    const secondaRisposta = await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDdtDiProva({ nome: 'Ordine 1 bis' }),
+    );
+    const secondoCorpo = (await secondaRisposta.json()) as { numeroDocumento: number };
+    expect(secondoCorpo.numeroDocumento).toBe(1);
+  });
+
+  it('due ddt dello stesso tenant ricevono numeri progressivi distinti', async () => {
+    const tenant = await creaTenant();
+    const prima = await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDdtDiProva({ id: 'ddt-a' }),
+    );
+    const seconda = await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDdtDiProva({ id: 'ddt-b' }),
+    );
+    expect((await prima.json()) as { numeroDocumento: number }).toMatchObject({
+      numeroDocumento: 1,
+    });
+    expect((await seconda.json()) as { numeroDocumento: number }).toMatchObject({
+      numeroDocumento: 2,
+    });
+  });
+
+  it('due POST ddt concorrenti dello stesso tenant ricevono numeri diversi', async () => {
+    const tenant = await creaTenant();
+    const [prima, seconda] = await Promise.all([
+      chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessioneDdtDiProva({ id: 'ddt-a' })),
+      chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessioneDdtDiProva({ id: 'ddt-b' })),
+    ]);
+    const numeroA = ((await prima.json()) as { numeroDocumento: number }).numeroDocumento;
+    const numeroB = ((await seconda.json()) as { numeroDocumento: number }).numeroDocumento;
+    expect(new Set([numeroA, numeroB])).toEqual(new Set([1, 2]));
+  });
+
+  it('una sessione non ddt non riceve un numero documento', async () => {
+    const tenant = await creaTenant();
+    const risposta = await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      tenant.token,
+      sessioneDiProva(),
+    );
+    const corpo = (await risposta.json()) as { numeroDocumento?: number };
+    expect(corpo.numeroDocumento).toBeUndefined();
+  });
+
+  it('due tenant diversi numerano ciascuno a partire da 1', async () => {
+    const primo = await creaTenant(1);
+    const secondo = await creaTenant(2);
+    const rispostaPrimo = await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      primo.token,
+      sessioneDdtDiProva({ id: 'ddt-primo' }),
+    );
+    const rispostaSecondo = await chiamaApiConCorpo(
+      'POST',
+      '/api/sessioni',
+      secondo.token,
+      sessioneDdtDiProva({ id: 'ddt-secondo' }),
+    );
+    expect((await rispostaPrimo.json()) as { numeroDocumento: number }).toMatchObject({
+      numeroDocumento: 1,
+    });
+    expect((await rispostaSecondo.json()) as { numeroDocumento: number }).toMatchObject({
+      numeroDocumento: 1,
+    });
+  });
+});
+
+describe('DELETE /api/sessioni/:id', () => {
+  it('cancella una sessione ancora chiusa', async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+
+    const risposta = await chiamaApiMetodo('DELETE', `/api/sessioni/${sessione.id}`, tenant.token);
+    expect(risposta.status).toBe(204);
+
+    const dopo = await chiamaApi(`/api/sessioni/${sessione.id}`, tenant.token);
+    expect(dopo.status).toBe(404);
+  });
+
+  it('rifiuta con 409 una sessione già esportata', async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+    await chiamaApi(`/api/sessioni/${sessione.id}/terminale.txt`, tenant.token);
+
+    const risposta = await chiamaApiMetodo('DELETE', `/api/sessioni/${sessione.id}`, tenant.token);
+    expect(risposta.status).toBe(409);
+
+    // Non è stata toccata: resta esportata e recuperabile.
+    const dopo = await chiamaApi(`/api/sessioni/${sessione.id}`, tenant.token);
+    expect(dopo.status).toBe(200);
+  });
+
+  it('rifiuta con 409 una sessione già importata', async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+    await chiamaApiConCorpo('PATCH', `/api/sessioni/${sessione.id}`, tenant.token, {
+      stato: 'esportata',
+    });
+    await chiamaApiConCorpo('PATCH', `/api/sessioni/${sessione.id}`, tenant.token, {
+      stato: 'importata',
+    });
+
+    const risposta = await chiamaApiMetodo('DELETE', `/api/sessioni/${sessione.id}`, tenant.token);
+    expect(risposta.status).toBe(409);
+  });
+
+  it('risponde 404 per una sessione inesistente', async () => {
+    const tenant = await creaTenant();
+    const risposta = await chiamaApiMetodo('DELETE', '/api/sessioni/non-esiste', tenant.token);
+    expect(risposta.status).toBe(404);
+  });
+
+  it('non cancella la sessione di un altro tenant', async () => {
+    const primo = await creaTenant(1);
+    const secondo = await creaTenant(2);
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', primo.token, sessione);
+
+    const risposta = await chiamaApiMetodo('DELETE', `/api/sessioni/${sessione.id}`, secondo.token);
+    expect(risposta.status).toBe(404);
+
+    const ancoraLi = await chiamaApi(`/api/sessioni/${sessione.id}`, primo.token);
+    expect(ancoraLi.status).toBe(200);
+  });
+
+  it("richiede l'autenticazione", async () => {
+    const tenant = await creaTenant();
+    const sessione = sessioneDiProva();
+    await chiamaApiConCorpo('POST', '/api/sessioni', tenant.token, sessione);
+    expect((await chiamaApiMetodo('DELETE', `/api/sessioni/${sessione.id}`, null)).status).toBe(
+      401,
+    );
   });
 });

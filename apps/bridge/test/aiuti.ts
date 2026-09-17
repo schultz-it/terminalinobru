@@ -1,5 +1,5 @@
 import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
-import type { Sessione } from '@terminalinobru/core';
+import type { Cliente, ClienteDocumento, Sessione } from '@terminalinobru/core';
 import worker from '../src/index.js';
 import { hashSha256 } from '../src/autenticazione.js';
 
@@ -78,6 +78,19 @@ export async function chiamaApi(percorso: string, token: string | null): Promise
   return chiama(new Request(`http://localhost${percorso}`, { headers: intestazioni }));
 }
 
+/** Chiama una rotta `/api` senza corpo, con il metodo indicato e il token Bearer del tenant. */
+export async function chiamaApiMetodo(
+  metodo: 'DELETE',
+  percorso: string,
+  token: string | null,
+): Promise<Response> {
+  const intestazioni: Record<string, string> = {};
+  if (token !== null) intestazioni['authorization'] = `Bearer ${token}`;
+  return chiama(
+    new Request(`http://localhost${percorso}`, { method: metodo, headers: intestazioni }),
+  );
+}
+
 /** Chiama una rotta `/api` con corpo JSON, il metodo indicato e il token Bearer del tenant. */
 export async function chiamaApiConCorpo(
   metodo: 'POST' | 'PATCH',
@@ -124,6 +137,54 @@ export function sessioneDiProva(overrides: Partial<Sessione> = {}): Sessione {
         ordine: 1,
       },
     ],
+    ...overrides,
+  };
+}
+
+/** Cliente di prova per i DDT. */
+export function clienteDocumentoDiProva(
+  overrides: Partial<ClienteDocumento> = {},
+): ClienteDocumento {
+  return {
+    codice: 'C001',
+    nome: 'Ceramiche Italiane',
+    partitaIva: '03322350178',
+    citta: 'Castiglione Del Lago',
+    ...overrides,
+  };
+}
+
+/** Sessione ddt chiusa di prova, con cliente e una riga. `id` è unico anche per le righe. */
+export function sessioneDdtDiProva(overrides: Partial<Sessione> = {}): Sessione {
+  const id = overrides.id ?? 'sessione-ddt-1';
+  return sessioneDiProva({
+    id,
+    tipo: 'ddt',
+    nome: 'Ordine 1',
+    cliente: clienteDocumentoDiProva(),
+    righe: [
+      {
+        id: `riga-${id}`,
+        sessioneId: id,
+        codiceProdotto: 'ABC',
+        quantita: 4,
+        lettaIl: '2026-02-01T09:01:00.000Z',
+        ordine: 0,
+      },
+    ],
+    ...overrides,
+  });
+}
+
+/** Cliente di prova per l'importazione, con `id` uguale al codice Easyfatt. */
+export function clienteDiProva(overrides: Partial<Cliente> = {}): Cliente {
+  return {
+    id: 'C001',
+    origine: 'easyfatt',
+    nome: 'Ceramiche Italiane',
+    partitaIva: '03322350178',
+    citta: 'Castiglione Del Lago',
+    aggiornatoIl: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
 }

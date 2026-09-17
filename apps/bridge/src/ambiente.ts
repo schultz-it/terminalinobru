@@ -17,6 +17,8 @@ export interface Tenant {
   separatore_decimale: string;
   ultimo_catalogo_il: string | null;
   creato_il: string;
+  prossimo_numero_documento: number;
+  ultimo_clienti_il: string | null;
 }
 
 /** Variabili che i middleware di autenticazione depositano nel contesto Hono. */

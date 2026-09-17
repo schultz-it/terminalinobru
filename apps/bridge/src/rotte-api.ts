@@ -4,6 +4,7 @@ import { autenticaApp } from './autenticazione.js';
 import type { RigaBarcode, RigaProdotto } from './catalogo-db.js';
 import { rigaABarcode, rigaAProdotto } from './catalogo-db.js';
 import { rotteBarcode } from './rotte-barcode.js';
+import { rotteClienti } from './rotte-clienti.js';
 import { rotteSessioni } from './rotte-sessioni.js';
 
 /** Rotte usate dalla PWA, tutte dietro il token Bearer del tenant. */
@@ -11,6 +12,7 @@ export const rotteApi = new Hono<Contesto>();
 
 rotteApi.route('/sessioni', rotteSessioni);
 rotteApi.route('/barcode', rotteBarcode);
+rotteApi.route('/clienti', rotteClienti);
 
 /** Oltre questo numero di prodotti la risposta del catalogo non viene generata. */
 export const LIMITE_PRODOTTI_RISPOSTA = 20_000;
