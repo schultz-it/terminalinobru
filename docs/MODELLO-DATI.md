@@ -50,19 +50,31 @@ type Sessione = {
   creataIl: string;
   chiusaIl?: string;
   dispositivo?: string;        // etichetta del telefono, da impostazioni
-  clienteCodice?: string;      // v2, solo ddt: cliente scelto sul telefono
-  clienteNome?: string;        // v2, copia per la visualizzazione offline
+  cliente?: ClienteDocumento;  // v2, solo ddt: copia completa del cliente scelto o creato sul telefono
   numeroDocumento?: number;    // v2, solo ddt: assegnato dal bridge alla ricezione
   righe?: Riga[];
 };
 
-// v2
-type Cliente = {
-  codice: string;              // chiave, codice anagrafica Easyfatt (CustomerCode)
-  nome: string;
-  partitaIva?: string;
-  codiceFiscale?: string;
-  citta?: string;
+// v2. I campi del cliente che finiscono nel documento (tag Customer* di Easyfatt-XML).
+type ClienteDocumento = {
+  codice?: string;             // CustomerCode: assente per i clienti creati in app (lo assegna Easyfatt)
+  nome: string;                // CustomerName, obbligatorio
+  partitaIva?: string;         // CustomerVatCode
+  codiceFiscale?: string;      // CustomerFiscalCode
+  indirizzo?: string;          // CustomerAddress
+  cap?: string;                // CustomerPostcode
+  citta?: string;              // CustomerCity
+  provincia?: string;          // CustomerProvince, 2 lettere
+  nazione?: string;            // CustomerCountry
+  sdi?: string;                // CustomerEInvoiceDestCode (codice destinatario o PEC)
+  telefono?: string;           // CustomerTel
+  email?: string;              // CustomerEmail
+};
+
+// v2. Anagrafica sul telefono: dall'export di Easyfatt oppure creata in app.
+type Cliente = ClienteDocumento & {
+  id: string;                  // chiave: il codice Easyfatt, oppure un UUID per quelli creati in app
+  origine: 'easyfatt' | 'app';
   listino?: number;            // 1..9 se ricavabile dall'export
   aggiornatoIl: string;
   eliminatoIl?: string;
@@ -158,19 +170,19 @@ CREATE TABLE sessione (
   ricevuta_il TEXT NOT NULL,
   esportata_il TEXT,
   importata_il TEXT,
-  cliente_codice TEXT,            -- v2 (migrazione 0002)
-  cliente_nome TEXT,              -- v2
+  cliente TEXT,                   -- v2 (migrazione 0002): JSON di ClienteDocumento
   numero_documento INTEGER        -- v2: progressivo per tenant, assegnato alla ricezione dei ddt
 );
 CREATE INDEX sessione_tenant_stato ON sessione(tenant_id, stato, chiusa_il);
 CREATE UNIQUE INDEX sessione_numero ON sessione(tenant_id, numero_documento);  -- v2
 
 -- v2 (migrazione 0002): tenant.prossimo_numero_documento INTEGER NOT NULL DEFAULT 1
-CREATE TABLE cliente (
+CREATE TABLE cliente (                   -- solo l'export di Easyfatt; quelli creati in app vivono sul telefono
   tenant_id TEXT NOT NULL REFERENCES tenant(id),
   codice TEXT NOT NULL,
   nome TEXT NOT NULL,
-  partita_iva TEXT, codice_fiscale TEXT, citta TEXT, listino INTEGER,
+  partita_iva TEXT, codice_fiscale TEXT, indirizzo TEXT, cap TEXT, citta TEXT, provincia TEXT,
+  nazione TEXT, sdi TEXT, telefono TEXT, email TEXT, listino INTEGER,
   aggiornato_il TEXT NOT NULL,
   eliminato_il TEXT,
   PRIMARY KEY (tenant_id, codice)
@@ -201,7 +213,7 @@ Un `POST /api/sessioni` con `id` già presente sostituisce le righe (l'utente ha
 | `sessioni` | `id` | `stato`, `creataIl` | Tutte le sessioni, anche chiuse, finché non si fa pulizia. |
 | `righe` | `id` | `sessioneId`, `[sessioneId+ordine]` | |
 | `codaUpload` | `++id` | `tipo` | Sessioni e barcode da inviare al bridge quando torna la rete. Voce: `{ tipo, riferimento, creataIl, tentativi, ultimoErrore? }`; `riferimento` è l'id della sessione o il barcode abbinato (una voce per barcode, il corpo si legge dallo store `barcode` al momento dell'invio). |
-| `clienti` | `codice` | `nome` | v2. Specchio dell'elenco clienti del bridge, senza tombstone. |
+| `clienti` | `id` | `origine`, `partitaIva`, `codiceFiscale` | v2. Export di Easyfatt (`origine: 'easyfatt'`, senza tombstone) più i clienti creati in app (`origine: 'app'`). Al primo export che porta la stessa partita IVA o lo stesso codice fiscale, la voce creata in app viene sostituita. |
 | `impostazioni` | `chiave` | | Coppie chiave/valore: i campi di `Impostazioni` più `cursoreCatalogo`, l'`aggiornatoIl` dell'ultima risposta di `/api/catalogo`. |
 
 ## 4. Forme JSON dell'API

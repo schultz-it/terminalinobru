@@ -454,12 +454,17 @@ Modello: **Opus 5**, effort **medium**. Branch `task/12-easyfatt-documenti`. Leg
 ```
 Estendi le librerie per la v2 (DDT come ordini e-commerce), senza toccare bridge e PWA.
 
-- core: tipi `Cliente` e campi `clienteCodice`, `clienteNome`, `numeroDocumento` di `Sessione`
-  come in docs/MODELLO-DATI.md sezione 1, con schemi zod e `IMPOSTAZIONI_DEFAULT` invariato.
+- core: tipi `ClienteDocumento`, `Cliente` e campi `cliente`, `numeroDocumento` di `Sessione` come in
+  docs/MODELLO-DATI.md sezione 1, con schemi zod (partita IVA 11 cifre, codice fiscale 11 o 16
+  caratteri, SDI 7 caratteri o PEC, provincia 2 lettere, email plausibile: tutti facoltativi ma
+  validati se presenti) e `IMPOSTAZIONI_DEFAULT` invariato. Funzione pura `validaCliente` con
+  messaggi in italiano.
 - easyfatt, `generaDocumentiXml(documenti, opzioni)`: da documenti di dominio
-  `{ numero, data (Date), cliente: {codice, nome}, commento?, righe: {codice, descrizione?, quantita, um?}[] }`
+  `{ numero, data (Date), cliente: ClienteDocumento, commento?, righe: {codice, descrizione?, quantita, um?}[] }`
   a `EasyfattDocuments AppVersion="2" Creator="TerminalinoBru"`, un `Document` per documento con
-  `DocumentType` C, `CustomerCode`, `CustomerName`, `Date` yyyy-mm-dd, `Number`, `InternalComment`
+  `DocumentType` C, tutti i tag `Customer*` presenti nel cliente (`CustomerCode` solo se c'è il
+  codice: per un cliente creato in app Easyfatt lo abbina per partita IVA, codice fiscale o
+  email, altrimenti lo crea), `Date` yyyy-mm-dd, `Number`, `InternalComment`
   e `Rows/Row` con `Code`, `Description` (se presente), `Qty` (punto decimale, max 3 decimali,
   senza zeri inutili), `Um` (se presente). Niente `Price` (decisione 55); opzione
   `listino?: string` che, se passata, aggiunge `PriceList`. Escape XML corretto, dichiarazione
@@ -470,7 +475,8 @@ Estendi le librerie per la v2 (DDT come ordini e-commerce), senza toccare bridge
 - `analizzaClientiCsv(testo)`: dall'export clienti di Easyfatt salvato come CSV (separatore `;`
   o `,` rilevato, virgolette, BOM, CRLF) ai `Cliente`. Colonne abbinate per nome normalizzato:
   codice (Codice, Cod., Codice cliente), nome (Denominazione, Ragione sociale, Nome, Nominativo),
-  partita IVA, codice fiscale, città, listino (numero 1-9 oppure "Listino N"). Restituisce
+  partita IVA, codice fiscale, indirizzo, CAP, città, provincia, nazione, codice destinatario/SDI,
+  telefono, email, listino (numero 1-9 oppure "Listino N"). Restituisce
   `{ clienti, avvisi }`: righe senza codice o nome scartate con avviso, codici duplicati con
   avviso (vince l'ultima). Fixture in `test/fixture/clienti-*.csv` con almeno 3 varianti.
 - Test: copertura 100% come per il resto del pacchetto; un test confronta l'XML generato con una
@@ -489,21 +495,23 @@ Modello: **Sonnet 5**, effort **high**. Branch `task/13-bridge-documenti`. Leggi
 ```
 Porta il bridge alla v2: clienti, numerazione dei DDT e ricezione documenti da Easyfatt.
 
-- Migrazione `0002_clienti_documenti.sql`: tabella `cliente`, colonne `cliente_codice`,
-  `cliente_nome`, `numero_documento` su `sessione` con indice unico (tenant, numero),
+- Migrazione `0002_clienti_documenti.sql`: tabella `cliente`, colonne `cliente` (JSON di
+  `ClienteDocumento`) e `numero_documento` su `sessione` con indice unico (tenant, numero),
   `tenant.prossimo_numero_documento` e `tenant.ultimo_clienti_il`.
 - `POST /api/clienti/importa` (Bearer, corpo CSV grezzo, max 2 MB): `analizzaClientiCsv`, upsert
   a blocchi e tombstone per gli assenti come il catalogo `full`, `ultimo_clienti_il` alla fine;
   risposta `{ importati, eliminati, avvisi }`. `GET /api/clienti?dal=` con lo stesso schema del
   catalogo (cursore = `ultimo_clienti_il`).
-- `POST /api/sessioni`: accetta `clienteCodice`/`clienteNome`; per i `ddt` assegna
+- `POST /api/sessioni`: accetta `cliente` (validato con lo schema di core, obbligatorio per i
+  `ddt`); per i `ddt` assegna
   `numero_documento` alla prima ricezione leggendo e incrementando
   `tenant.prossimo_numero_documento` nella stessa `db.batch`; un upsert successivo della stessa
   sessione non cambia il numero. Risposta con `numeroDocumento`. Elenco e dettaglio lo espongono.
 - `GET /easyfatt/documenti` (Basic): `analizzaParametriRicezione`; risponde con
   `generaDocumentiXml` delle sessioni `ddt` non `aperta` del tenant con numero nell'intervallo
   `firstnum..lastnum` e data di chiusura in `firstdate..lastdate` (parametri assenti = nessun
-  limite), righe aggregate con `aggregaRighe` e descrizione presa da `prodotto`. Le sessioni
+  limite), cliente dal JSON della sessione, righe aggregate con `aggregaRighe` e descrizione
+  presa da `prodotto`. Le sessioni
   servite per la prima volta passano a `esportata`; le sessioni con numero minore di `firstnum`
   ancora `esportata` passano a `importata` (decisione 53). Errori in testo puro, mai JSON.
   Registra nel log ogni richiesta con i parametri ricevuti (serve al collaudo).
@@ -530,8 +538,15 @@ Completa la v2 nella PWA.
   anche il numero di clienti.
 - Nuova sessione di tipo DDT: campo "Cliente" obbligatorio con ricerca per nome, codice o partita
   IVA (indice in memoria come per i prodotti, massimo 30 risultati), scelta con un tocco, cliente
-  mostrato nell'intestazione della sessione e nel riepilogo. Se non ci sono clienti sincronizzati,
-  messaggio che rimanda a Esportazioni > Clienti.
+  mostrato nell'intestazione della sessione e nel riepilogo. Pulsante "Nuovo cliente" con modulo:
+  ragione sociale (obbligatoria), partita IVA, codice fiscale, indirizzo, CAP, città, provincia,
+  codice destinatario SDI, telefono, email, validati con `validaCliente`; salvato in Dexie con
+  `origine: 'app'` e un UUID come id, subito scelto per la sessione. Nella sessione viaggia la
+  copia completa (`Sessione.cliente`), così Easyfatt crea l'anagrafica al primo scarico. Al
+  successivo import dell'export clienti, una voce creata in app con la stessa partita IVA o lo
+  stesso codice fiscale viene sostituita da quella di Easyfatt. Se non ci sono clienti
+  sincronizzati, messaggio che rimanda a Esportazioni > Clienti, ma "Nuovo cliente" funziona
+  comunque.
 - Sessione chiusa e Home: per i DDT mostra "Ordine n. <numeroDocumento>" appena il bridge lo
   assegna (dalla risposta del POST, salvato in Dexie) e lo stato (esportata = scaricato da
   Easyfatt, importata).
