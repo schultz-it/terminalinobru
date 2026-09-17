@@ -14,18 +14,26 @@ la sua integrazione e-commerce.
 3. **Carico**: scansiona la merce in arrivo, importa nell'Arrivo merce in Easyfatt.
 4. **Consultazione**: prezzi, giacenza, ubicazione di un prodotto da barcode, codice o descrizione.
 
+## App
+
+In produzione su `https://terminalinobru.andrea-93a.workers.dev`.
+
 ## Documentazione
 
-- [Architettura](docs/ARCHITETTURA.md)
-- [Protocolli Danea Easyfatt](docs/PROTOCOLLI-DANEA.md)
-- [Modello dati](docs/MODELLO-DATI.md)
-- [Decisioni di progetto](docs/DECISIONI.md)
-- [Piano dei task](docs/TASK.md)
-- Regole per chi sviluppa: [CLAUDE.md](CLAUDE.md)
+| Documento | Contenuto |
+| --- | --- |
+| [Guida utente](docs/GUIDA-UTENTE.md) | Come usare l'app in magazzino e come portare i dati in Easyfatt. |
+| [Runbook](docs/RUNBOOK.md) | Configurazione: Cloudflare, database, tenant, collegamento a Easyfatt. |
+| [Architettura](docs/ARCHITETTURA.md) | Come è fatto il progetto e i flussi principali. |
+| [Protocolli Danea Easyfatt](docs/PROTOCOLLI-DANEA.md) | Formati file e XML usati con Easyfatt. |
+| [Modello dati](docs/MODELLO-DATI.md) | Tipi di dominio e schema del database. |
+| [Decisioni di progetto](docs/DECISIONI.md) | Scelte prese e perché. |
+| [Piano dei task](docs/TASK.md) | Avanzamento dei task di sviluppo. |
+| [CLAUDE.md](CLAUDE.md) | Regole per chi sviluppa. |
 
 ## Stato
 
-In progettazione. Vedi `docs/TASK.md` per l'avanzamento.
+In produzione presso Imballaggi Brunelli. Vedi `docs/TASK.md` per l'avanzamento.
 
 ## Licenza
 
