@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<EasyfattDocuments AppVersion="2" Creator="TerminalinoBru" CreatorUrl="">
+  <Documents>
+    <Document>
+      <DocumentType>C</DocumentType>
+      <CustomerCode>C001</CustomerCode>
+      <CustomerName>Rossi &amp; Figli &lt;Imballaggi&gt; S.r.l.</CustomerName>
+      <CustomerAddress>Via dell&apos;Industria 12</CustomerAddress>
+      <CustomerPostcode>47122</CustomerPostcode>
+      <CustomerCity>Forlì</CustomerCity>
+      <CustomerProvince>FC</CustomerProvince>
+      <CustomerCountry>Italia</CustomerCountry>
+      <CustomerFiscalCode>01234567890</CustomerFiscalCode>
+      <CustomerVatCode>01234567890</CustomerVatCode>
+      <CustomerTel>0543 123456</CustomerTel>
+      <CustomerEmail>ordini@rossi.it</CustomerEmail>
+      <CustomerEInvoiceDestCode>M5UXCR1</CustomerEInvoiceDestCode>
+      <Date>2026-09-18</Date>
+      <Number>41</Number>
+      <PriceList>Rivenditori</PriceList>
+      <InternalComment>Sessione &quot;Scaffale A&quot; dal telefono</InternalComment>
+      <Rows>
+        <Row>
+          <Code>FILM500</Code>
+          <Description>Film estensibile 500 mm</Description>
+          <Qty>2.5</Qty>
+          <Um>rt</Um>
+        </Row>
+        <Row>
+          <Code>+banp_1200800p</Code>
+          <Qty>172</Qty>
+        </Row>
+      </Rows>
+    </Document>
+    <Document>
+      <DocumentType>C</DocumentType>
+      <CustomerName>Bianchi Mario</CustomerName>
+      <CustomerFiscalCode>BNCMRA80A01D704X</CustomerFiscalCode>
+      <CustomerEmail>mario@bianchi.it</CustomerEmail>
+      <CustomerEInvoiceDestCode>mario.bianchi@pec.it</CustomerEInvoiceDestCode>
+      <Date>2026-09-18</Date>
+      <Number>42</Number>
+      <PriceList>Rivenditori</PriceList>
+      <Rows>
+        <Row>
+          <Code>NASTRO48</Code>
+          <Description>Nastro adesivo 48 mm</Description>
+          <Qty>0.3</Qty>
+          <Um>pz</Um>
+        </Row>
+      </Rows>
+    </Document>
+  </Documents>
+</EasyfattDocuments>
