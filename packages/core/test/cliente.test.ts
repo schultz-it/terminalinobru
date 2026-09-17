@@ -28,6 +28,14 @@ describe('schemaClienteDocumento', () => {
     expect(schemaClienteDocumento.parse({ nome: 'Bianchi' })).toEqual({ nome: 'Bianchi' });
   });
 
+  it('accetta una partita IVA estera con la sigla del paese, anche minuscola', () => {
+    expect(
+      schemaClienteDocumento.safeParse({ nome: 'GmbH', partitaIva: 'DE123456789' }).success,
+    ).toBe(true);
+    const esito = validaCliente({ nome: 'GmbH', partitaIva: 'de123456789' });
+    expect(esito).toEqual({ valido: true, cliente: { nome: 'GmbH', partitaIva: 'DE123456789' } });
+  });
+
   it('accetta codice fiscale numerico e PEC al posto del codice destinatario', () => {
     const esito = schemaClienteDocumento.safeParse({
       nome: 'Bianchi',
@@ -39,7 +47,8 @@ describe('schemaClienteDocumento', () => {
 
   it.each([
     ['partitaIva', '1234567890'],
-    ['partitaIva', 'IT01234567890'],
+    ['partitaIva', '1T01234567890'],
+    ['partitaIva', 'D'],
     ['codiceFiscale', 'RSSMRA80A01H501'],
     ['provincia', 'FOR'],
     ['provincia', 'F1'],
@@ -133,7 +142,8 @@ describe('validaCliente', () => {
       valido: false,
       errori: {
         nome: 'La ragione sociale è obbligatoria.',
-        partitaIva: 'La partita IVA deve avere 11 cifre.',
+        partitaIva:
+          'La partita IVA deve avere 11 cifre, oppure la sigla del paese seguita dal numero (es. DE123456789).',
         codiceFiscale: 'Il codice fiscale deve avere 16 caratteri oppure 11 cifre.',
         provincia: 'La provincia deve essere di 2 lettere.',
         sdi: 'Il codice destinatario deve avere 7 caratteri, oppure indicare una PEC.',

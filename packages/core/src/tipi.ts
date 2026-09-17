@@ -100,7 +100,8 @@ export const schemaRiga = z.object({
 export type Riga = z.output<typeof schemaRiga>;
 
 /** Espressioni regolari dei campi fiscali e di contatto del cliente. */
-const RE_PARTITA_IVA = /^\d{11}$/;
+/** 11 cifre (Italia) oppure sigla del paese e numero (estero, es. DE123456789). */
+const RE_PARTITA_IVA = /^(?:\d{11}|[A-Z]{2}[A-Z0-9]{2,18})$/i;
 const RE_CODICE_FISCALE = /^(?:\d{11}|[A-Za-z0-9]{16})$/;
 const RE_CODICE_DESTINATARIO = /^[A-Za-z0-9]{7}$/;
 const RE_PROVINCIA = /^[A-Za-z]{2}$/;
@@ -119,7 +120,13 @@ export const schemaClienteDocumento = z.object({
     .string({ error: 'La ragione sociale è obbligatoria.' })
     .trim()
     .min(1, 'La ragione sociale è obbligatoria.'),
-  partitaIva: z.string().regex(RE_PARTITA_IVA, 'La partita IVA deve avere 11 cifre.').optional(),
+  partitaIva: z
+    .string()
+    .regex(
+      RE_PARTITA_IVA,
+      'La partita IVA deve avere 11 cifre, oppure la sigla del paese seguita dal numero (es. DE123456789).',
+    )
+    .optional(),
   codiceFiscale: z
     .string()
     .regex(RE_CODICE_FISCALE, 'Il codice fiscale deve avere 16 caratteri oppure 11 cifre.')

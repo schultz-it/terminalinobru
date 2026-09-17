@@ -12,11 +12,11 @@ export type EsitoValidazioneCliente =
   | { valido: false; errori: Partial<Record<CampoCliente, string>> };
 
 /** Campi scritti in maiuscolo dopo la pulizia. */
-const CAMPI_MAIUSCOLI: readonly CampoCliente[] = ['codiceFiscale', 'provincia'];
+const CAMPI_MAIUSCOLI: readonly CampoCliente[] = ['partitaIva', 'codiceFiscale', 'provincia'];
 
 /**
  * Pulisce e valida i dati di un cliente: toglie gli spazi ai bordi, considera assenti i campi
- * vuoti, porta in maiuscolo codice fiscale, provincia e codice destinatario (non la PEC).
+ * vuoti, porta in maiuscolo partita IVA, codice fiscale, provincia e codice destinatario (non la PEC).
  * I messaggi di errore sono in italiano, uno per campo.
  */
 export function validaCliente(dati: DatiCliente): EsitoValidazioneCliente {

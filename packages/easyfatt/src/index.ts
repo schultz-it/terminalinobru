@@ -47,8 +47,12 @@ export { analizzaParametriRicezione } from './ricezione.js';
 export { ErroreRicezione } from './ricezione.js';
 export type { ParametriRicezione } from './ricezione.js';
 
-/** Legge l'export clienti di Easyfatt salvato come CSV. */
-export { analizzaClientiCsv } from './clienti-csv.js';
+/** Interpreta la tabella dell'export clienti "Soggetti" di Easyfatt (da CSV o da Excel). */
+export { analizzaClientiTabella } from './clienti.js';
+/** Legge un CSV in una tabella di celle di testo. */
+export { leggiCsv } from './clienti.js';
+/** Ripiego: export clienti salvato come CSV, `leggiCsv` più `analizzaClientiTabella`. */
+export { analizzaClientiCsv } from './clienti.js';
 /** Errore che rende inutilizzabile l'export clienti, con messaggio in italiano. */
-export { ErroreClientiCsv } from './clienti-csv.js';
-export type { ClientiCsv, OpzioniClientiCsv } from './clienti-csv.js';
+export { ErroreTabellaClienti } from './clienti.js';
+export type { OpzioniClienti, TabellaClienti } from './clienti.js';

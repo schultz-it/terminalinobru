@@ -1,28 +1,31 @@
 import type { Cliente } from '@terminalinobru/core';
 
-/** Esito della lettura dell'export clienti. */
-export type ClientiCsv = {
+/** Esito dell'interpretazione dell'export clienti. */
+export type TabellaClienti = {
   clienti: Cliente[];
   /** Righe scartate, codici ripetuti e colonne utili non trovate, in italiano. */
   avvisi: string[];
 };
 
-/** Opzioni della lettura dell'export clienti. */
-export type OpzioniClientiCsv = {
+/** Opzioni dell'interpretazione dell'export clienti. */
+export type OpzioniClienti = {
   /** Istante da scrivere in `aggiornatoIl`. Default: adesso. */
   aggiornatoIl?: string;
 };
 
 /** Errore che rende inutilizzabile l'export clienti, con messaggio in italiano. */
-export class ErroreClientiCsv extends Error {
+export class ErroreTabellaClienti extends Error {
   constructor(messaggio: string) {
     super(messaggio);
-    this.name = 'ErroreClientiCsv';
+    this.name = 'ErroreTabellaClienti';
   }
 }
 
-/** Campi del cliente ricavabili dall'export, più la PEC usata come ripiego del codice destinatario. */
-type CampoCsv =
+/**
+ * Campi del cliente ricavabili dall'export, più la PEC (ripiego del codice destinatario) e il
+ * cellulare (ripiego del telefono).
+ */
+type CampoTabella =
   | 'codice'
   | 'nome'
   | 'partitaIva'
@@ -35,32 +38,44 @@ type CampoCsv =
   | 'sdi'
   | 'pec'
   | 'telefono'
+  | 'cellulare'
   | 'email'
   | 'listino';
 
 /**
  * Intestazioni riconosciute per ogni campo, già normalizzate, in ordine di preferenza: se il file
- * ha sia "Denominazione" sia "Nome" vince "Denominazione".
+ * ha sia "Denominazione" sia "Nome" vince "Denominazione". Le prime sono quelle dell'export
+ * "Soggetti" di Easyfatt (docs/TASK.md, T12).
  */
-const INTESTAZIONI: Record<CampoCsv, readonly string[]> = {
-  codice: ['codice', 'cod', 'codicecliente', 'codcliente'],
+const INTESTAZIONI: Record<CampoTabella, readonly string[]> = {
+  codice: ['cod', 'codice', 'codicecliente', 'codcliente'],
   nome: ['denominazione', 'ragionesociale', 'nominativo', 'nome'],
   partitaIva: ['partitaiva', 'piva', 'codiceiva'],
   codiceFiscale: ['codicefiscale', 'codfiscale', 'cf'],
   indirizzo: ['indirizzo'],
   cap: ['cap'],
   citta: ['citta', 'comune', 'localita'],
-  provincia: ['provincia', 'prov'],
+  provincia: ['prov', 'provincia'],
   nazione: ['nazione', 'paese'],
-  sdi: ['codicedestinatario', 'coddestinatario', 'codicesdi', 'sdi'],
+  sdi: [
+    'coddestinatariofattelettr',
+    'codicedestinatariofattelettr',
+    'coddestinatariofatturaelettronica',
+    'codicedestinatariofatturaelettronica',
+    'codicedestinatario',
+    'coddestinatario',
+    'codicesdi',
+    'sdi',
+  ],
   pec: ['pec', 'indirizzopec'],
-  telefono: ['telefono', 'tel'],
+  telefono: ['tel', 'telefono'],
+  cellulare: ['cell', 'cellulare'],
   email: ['email', 'mail', 'indirizzoemail'],
   listino: ['listino'],
 };
 
 /** Colonne facoltative di cui si segnala l'assenza (docs/DECISIONI.md punto 54). */
-const COLONNE_SEGNALATE: readonly [CampoCsv, string][] = [
+const COLONNE_SEGNALATE: readonly [CampoTabella, string][] = [
   ['partitaIva', 'partita IVA'],
   ['codiceFiscale', 'codice fiscale'],
   ['citta', 'città'],
@@ -68,16 +83,10 @@ const COLONNE_SEGNALATE: readonly [CampoCsv, string][] = [
 ];
 
 /** Campi copiati tali e quali (dopo il trim) nel cliente. */
-const CAMPI_TESTO = [
-  'partitaIva',
-  'codiceFiscale',
-  'indirizzo',
-  'cap',
-  'citta',
-  'nazione',
-  'telefono',
-  'email',
-] as const;
+const CAMPI_TESTO = ['indirizzo', 'cap', 'citta', 'nazione', 'email'] as const;
+
+/** Lunghezza di partita IVA e codice fiscale numerici italiani. */
+const CIFRE_FISCALI = 11;
 
 /** Intestazione in forma di confronto: minuscola, senza accenti né punteggiatura. */
 function normalizzaIntestazione(testo: string): string {
@@ -87,9 +96,6 @@ function normalizzaIntestazione(testo: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
 }
-
-/** Record del CSV con il numero di riga del file in cui comincia. */
-type RecordCsv = { campi: string[]; riga: number };
 
 /** Sceglie il separatore contando `;` e `,` fuori dalle virgolette nella prima riga. */
 function rilevaSeparatore(testo: string): ';' | ',' {
@@ -105,30 +111,28 @@ function rilevaSeparatore(testo: string): ';' | ',' {
   return virgole > puntiEVirgola ? ',' : ';';
 }
 
-/** Divide il testo in record, gestendo virgolette, virgolette raddoppiate e a capo nei campi. */
-function leggiRecord(testo: string, separatore: string): RecordCsv[] {
-  const record: RecordCsv[] = [];
+/**
+ * Legge un CSV (separatore `;` o `,` rilevato, virgolette, virgolette raddoppiate, a capo nei
+ * campi, BOM, CRLF) in una tabella di celle di testo. Ogni record del file è una riga della
+ * tabella, anche se vuoto, così i numeri di riga negli avvisi coincidono con quelli del file.
+ */
+export function leggiCsv(testo: string): string[][] {
+  const pulito = testo.replace(/^\uFEFF/, '');
+  if (pulito === '') return [];
+  const separatore = rilevaSeparatore(pulito);
+  const righe: string[][] = [];
   let campi: string[] = [];
   let campo = '';
   let traVirgolette = false;
-  let riga = 1;
-  let inizio = 1;
-  const chiudiRecord = () => {
-    campi.push(campo);
-    if (campi.some((c) => c.trim() !== '')) record.push({ campi, riga: inizio });
-    campi = [];
-    campo = '';
-  };
-  for (let i = 0; i < testo.length; i += 1) {
-    const carattere = testo[i] as string;
+  for (let i = 0; i < pulito.length; i += 1) {
+    const carattere = pulito[i] as string;
     if (traVirgolette) {
-      if (carattere === '"' && testo[i + 1] === '"') {
+      if (carattere === '"' && pulito[i + 1] === '"') {
         campo += '"';
         i += 1;
       } else if (carattere === '"') {
         traVirgolette = false;
       } else {
-        if (carattere === '\n') riga += 1;
         campo += carattere;
       }
     } else if (carattere === '"') {
@@ -137,16 +141,21 @@ function leggiRecord(testo: string, separatore: string): RecordCsv[] {
       campi.push(campo);
       campo = '';
     } else if (carattere === '\n' || carattere === '\r') {
-      if (carattere === '\r' && testo[i + 1] === '\n') i += 1;
-      chiudiRecord();
-      riga += 1;
-      inizio = riga;
+      if (carattere === '\r' && pulito[i + 1] === '\n') i += 1;
+      campi.push(campo);
+      righe.push(campi);
+      campi = [];
+      campo = '';
     } else {
       campo += carattere;
     }
   }
-  chiudiRecord();
-  return record;
+  // L'ultimo record esiste solo se il testo non finisce con un a capo.
+  if (campi.length > 0 || campo !== '') {
+    campi.push(campo);
+    righe.push(campi);
+  }
+  return righe;
 }
 
 /** Numero di listino da "2" o "Listino 2", undefined altrimenti. */
@@ -156,30 +165,50 @@ function leggiListino(testo: string): number | undefined {
 }
 
 /**
- * Legge l'export clienti di Easyfatt salvato come CSV (separatore `;` o `,`, virgolette, BOM,
- * CRLF). Le colonne sono abbinate per nome; righe senza codice o nome sono scartate con avviso,
- * e un codice ripetuto tiene l'ultima riga.
+ * Partita IVA o codice fiscale come li vuole Easyfatt: maiuscoli e, se numerici ma accorciati
+ * da Excel (che perde gli zeri iniziali), riportati a 11 cifre.
  */
-export function analizzaClientiCsv(testo: string, opzioni: OpzioniClientiCsv = {}): ClientiCsv {
-  const aggiornatoIl = opzioni.aggiornatoIl ?? new Date().toISOString();
-  const pulito = testo.replace(/^\uFEFF/, '');
-  const record = leggiRecord(pulito, rilevaSeparatore(pulito));
-  const [intestazione, ...righe] = record;
-  if (intestazione === undefined) throw new ErroreClientiCsv('Il file dei clienti è vuoto.');
+function codiceFiscaleOIva(testo: string): string {
+  const maiuscolo = testo.toUpperCase();
+  return /^\d+$/.test(maiuscolo) && maiuscolo.length < CIFRE_FISCALI
+    ? maiuscolo.padStart(CIFRE_FISCALI, '0')
+    : maiuscolo;
+}
 
-  const normalizzate = intestazione.campi.map(normalizzaIntestazione);
-  const colonne = {} as Record<CampoCsv, number>;
-  for (const [campo, sinonimi] of Object.entries(INTESTAZIONI) as [CampoCsv, string[]][]) {
+function vuota(riga: readonly string[]): boolean {
+  return riga.every((cella) => cella.trim() === '');
+}
+
+/**
+ * Interpreta la tabella dell'export "Soggetti" di Easyfatt (prima riga = intestazioni, celle già
+ * come testo, da CSV o da Excel) e restituisce i clienti con `origine: 'easyfatt'`. Le colonne
+ * sono abbinate per nome; le righe vuote vengono ignorate, quelle senza codice o nome scartate con
+ * avviso, e un codice ripetuto tiene l'ultima riga. I numeri di riga degli avvisi sono quelli
+ * della tabella (in Excel, il numero della riga).
+ */
+export function analizzaClientiTabella(
+  righe: readonly (readonly string[])[],
+  opzioni: OpzioniClienti = {},
+): TabellaClienti {
+  const aggiornatoIl = opzioni.aggiornatoIl ?? new Date().toISOString();
+  const intestazione = righe[0];
+  if (intestazione === undefined || vuota(intestazione)) {
+    throw new ErroreTabellaClienti('Il file dei clienti è vuoto.');
+  }
+
+  const normalizzate = intestazione.map(normalizzaIntestazione);
+  const colonne = {} as Record<CampoTabella, number>;
+  for (const [campo, sinonimi] of Object.entries(INTESTAZIONI) as [CampoTabella, string[]][]) {
     const trovata = sinonimi.map((s) => normalizzate.indexOf(s)).find((indice) => indice >= 0);
     colonne[campo] = trovata ?? -1;
   }
   if (colonne.codice < 0) {
-    throw new ErroreClientiCsv(
-      'Colonna del codice cliente non trovata: serve una colonna "Codice", "Cod." o "Codice cliente".',
+    throw new ErroreTabellaClienti(
+      'Colonna del codice cliente non trovata: serve una colonna "Cod.", "Codice" o "Codice cliente".',
     );
   }
   if (colonne.nome < 0) {
-    throw new ErroreClientiCsv(
+    throw new ErroreTabellaClienti(
       'Colonna del nome non trovata: serve una colonna "Denominazione", "Ragione sociale", "Nome" o "Nominativo".',
     );
   }
@@ -190,8 +219,11 @@ export function analizzaClientiCsv(testo: string, opzioni: OpzioniClientiCsv = {
   }
 
   const clienti = new Map<string, { cliente: Cliente; riga: number }>();
-  for (const { campi, riga } of righe) {
-    const leggi = (campo: CampoCsv): string | undefined => {
+  for (let indice = 1; indice < righe.length; indice += 1) {
+    const campi = righe[indice] as readonly string[];
+    const riga = indice + 1;
+    if (vuota(campi)) continue;
+    const leggi = (campo: CampoTabella): string | undefined => {
       const valore = campi[colonne[campo]]?.trim();
       return valore === undefined || valore === '' ? undefined : valore;
     };
@@ -208,10 +240,16 @@ export function analizzaClientiCsv(testo: string, opzioni: OpzioniClientiCsv = {
       const valore = leggi(campo);
       if (valore !== undefined) cliente[campo] = valore;
     }
+    const partitaIva = leggi('partitaIva');
+    if (partitaIva !== undefined) cliente.partitaIva = codiceFiscaleOIva(partitaIva);
+    const codiceFiscale = leggi('codiceFiscale');
+    if (codiceFiscale !== undefined) cliente.codiceFiscale = codiceFiscaleOIva(codiceFiscale);
     const provincia = leggi('provincia');
     if (provincia !== undefined) cliente.provincia = provincia.toUpperCase();
     const sdi = leggi('sdi') ?? leggi('pec');
     if (sdi !== undefined) cliente.sdi = sdi;
+    const telefono = leggi('telefono') ?? leggi('cellulare');
+    if (telefono !== undefined) cliente.telefono = telefono;
     const listino = leggi('listino');
     const numeroListino = listino === undefined ? undefined : leggiListino(listino);
     if (numeroListino !== undefined) cliente.listino = numeroListino;
@@ -225,7 +263,12 @@ export function analizzaClientiCsv(testo: string, opzioni: OpzioniClientiCsv = {
     clienti.set(codice, { cliente, riga });
   }
   if (clienti.size === 0) {
-    throw new ErroreClientiCsv('Il file non contiene nessun cliente valido.');
+    throw new ErroreTabellaClienti('Il file non contiene nessun cliente valido.');
   }
   return { clienti: [...clienti.values()].map((voce) => voce.cliente), avvisi };
+}
+
+/** Ripiego per un export salvato come CSV: `leggiCsv` più `analizzaClientiTabella`. */
+export function analizzaClientiCsv(testo: string, opzioni: OpzioniClienti = {}): TabellaClienti {
+  return analizzaClientiTabella(leggiCsv(testo), opzioni);
 }
