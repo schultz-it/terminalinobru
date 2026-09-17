@@ -22,7 +22,7 @@ e test approfonditi, `low` per documentazione.
 | T06 | PWA: scanner | Opus 5 | high | fatto | [#6](https://github.com/schultz-it/TerminalinoBru/pull/6) |
 | T07 | PWA: sessioni ed export | Opus 5 | high | fatto | [#7](https://github.com/schultz-it/TerminalinoBru/pull/7) |
 | T08 | PWA: pagina Esportazioni e codici sconosciuti | Sonnet 5 | medium | fatto | [#8](https://github.com/schultz-it/TerminalinoBru/pull/8) |
-| T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | da fare | |
+| T09 | Deploy Cloudflare e runbook | Sonnet 5 | medium | fatto | [#9](https://github.com/schultz-it/TerminalinoBru/pull/9) |
 | T10 | Collaudo con Easyfatt reale | Opus 5 | high | da fare | |
 | T11 | Guida utente | Sonnet 5 | low | da fare | |
 | T12 | v2: DDT completi via XML | Fable 5.1 | high | futuro | |
