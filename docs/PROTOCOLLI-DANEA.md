@@ -206,9 +206,52 @@ D documento di trasporto, E ordine fornitore, F fattura accompagnatoria, G rappo
 H arrivo merce fornitore, I fattura, J fattura d'acconto, L pro-forma, M autofattura,
 N nota di credito, O nota di addebito, P parcella, Q preventivo, R ricevuta fiscale, S preventivo fornitore.
 
-Tag utili di `Document`: `DocumentType`, `Date`, `Number`, `Numbering`, `CustomerCode`,
-`CustomerName`, indirizzo `Customer*`, consegna `Delivery*`, `Carrier`, `TransportReason`,
-`GoodsAppearance`, `NumOfPieces`, `TransportDateTime`, `Warehouse`, `PriceList`, `InternalComment`.
+Tag utili di `Document`: `DocumentType`, `Date` (yyyy-mm-dd), `Number`, `Numbering`, i tag del
+cliente `CustomerCode`, `CustomerWebLogin`, `CustomerName`, `CustomerAddress`, `CustomerPostcode`,
+`CustomerCity`, `CustomerProvince` (2 lettere), `CustomerCountry`, `CustomerFiscalCode`,
+`CustomerVatCode`, `CustomerEInvoiceDestCode` ("codice destinatario o PEC per fattura
+elettronica"), `CustomerTel`, `CustomerCellPhone`, `CustomerFax`, `CustomerEmail`, `CustomerPec`,
+`CustomerReference`; consegna `Delivery*`; `Carrier`, `TransportReason`, `GoodsAppearance`,
+`NumOfPieces`, `TransportDateTime`, `Warehouse`, `PriceList` (denominazione del listino),
+`InternalComment`, `CustomField1-4`. Nessun tag è obbligatorio. `Number`: nell'importazione
+manuale Easyfatt assegna il numero; nella ricezione e-commerce è il numero dell'ordine web, usato
+per `firstnum`/`lastnum`.
+
+Esempio Danea, ridotto ai tag che usiamo (i valori sono quelli della pagina Danea):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<EasyfattDocuments AppVersion="2" Creator="Danea Soft" CreatorUrl="www.danea.it">
+  <Documents>
+    <Document>
+      <DocumentType>C</DocumentType>
+      <CustomerCode>0018</CustomerCode>
+      <CustomerName>Ceramiche Italiane</CustomerName>
+      <CustomerAddress>Via Flaminia, 963</CustomerAddress>
+      <CustomerPostcode>06061</CustomerPostcode>
+      <CustomerCity>Castiglione Del Lago</CustomerCity>
+      <CustomerProvince>PG</CustomerProvince>
+      <CustomerCountry>Italia</CustomerCountry>
+      <CustomerVatCode>03322350178</CustomerVatCode>
+      <CustomerTel>075-26589</CustomerTel>
+      <CustomerEmail>italianceramiche@ceramiche.it</CustomerEmail>
+      <Date>2010-03-23</Date>
+      <Number>2</Number>
+      <InternalComment>Nessun Acconto</InternalComment>
+      <Rows>
+        <Row>
+          <Code>0043</Code>
+          <Description>Appendiabiti su ruote</Description>
+          <Qty>1</Qty>
+          <Um>pz</Um>
+          <Price>162</Price>
+          <VatCode Perc="20" Class="Imponibile" Description="Aliquota 20%">20</VatCode>
+        </Row>
+      </Rows>
+    </Document>
+  </Documents>
+</EasyfattDocuments>
+```
 
 Tag di `Row`: `Code`, `Description`, `Qty`, `Um`, `Price`, `Discounts`, `VatCode`, `Lot`,
 `ExpiryDate`, `Serial`, `Stock` (true per movimentare il magazzino), `Notes`.

@@ -31,5 +31,28 @@ export { analizzaCatalogo } from './catalogo.js';
 export { ErroreCatalogo } from './catalogo.js';
 export type { Catalogo, ModalitaCatalogo, OpzioniCatalogo } from './catalogo.js';
 
-/** Genera l'`EasyfattDocuments` vuoto con cui il bridge risponde al polling in v1. */
+/** Genera l'`EasyfattDocuments` con gli ordini cliente (`DocumentType` C) per la ricezione e-commerce. */
+export { generaDocumentiXml } from './documenti.js';
+/** Genera l'`EasyfattDocuments` vuoto, come `generaDocumentiXml([])`. */
 export { generaDocumentiVuoto } from './documenti.js';
+/** Quantità con punto decimale, al massimo 3 decimali e senza zeri inutili. */
+export { formattaQuantita } from './documenti.js';
+/** Errore di generazione dei documenti, con messaggio in italiano. */
+export { ErroreDocumenti } from './documenti.js';
+export type { DocumentoOrdine, OpzioniDocumenti, RigaDocumento } from './documenti.js';
+
+/** Interpreta i parametri `appver`, `firstdate`, `lastdate`, `firstnum`, `lastnum` del polling. */
+export { analizzaParametriRicezione } from './ricezione.js';
+/** Errore nei parametri del polling, con messaggio in italiano. */
+export { ErroreRicezione } from './ricezione.js';
+export type { ParametriRicezione } from './ricezione.js';
+
+/** Interpreta la tabella dell'export clienti "Soggetti" di Easyfatt (da CSV o da Excel). */
+export { analizzaClientiTabella } from './clienti.js';
+/** Legge un CSV in una tabella di celle di testo. */
+export { leggiCsv } from './clienti.js';
+/** Ripiego: export clienti salvato come CSV, `leggiCsv` più `analizzaClientiTabella`. */
+export { analizzaClientiCsv } from './clienti.js';
+/** Errore che rende inutilizzabile l'export clienti, con messaggio in italiano. */
+export { ErroreTabellaClienti } from './clienti.js';
+export type { OpzioniClienti, TabellaClienti } from './clienti.js';

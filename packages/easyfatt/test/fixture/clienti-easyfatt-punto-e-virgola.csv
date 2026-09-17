@@ -1,0 +1,8 @@
+﻿Cod.;Denominazione;Indirizzo;Cap;Città;Prov.;Nazione;Tel.;e-mail;Pec;Codice destinatario;Partita Iva;Codice fiscale;Listino
+C001;"Rossi & Figli; Imballaggi S.r.l.";"Via dell'Industria 12";47122;Forlì;fc;Italia;0543 123456;ordini@rossi.it;rossi@pec.it;M5UXCR1;01234567890;01234567890;Listino 2
+C002;"Bar ""Da Gino""";"Piazza Saffi 1
+scala B";47121;Forlì;FC;Italia;;;gino@pec.it;;02345678901;;3
+;Senza codice;;;;;;;;;;;;
+C003;Verdi snc;;;Cesena;FC;;;;;;03456789012;;Rivenditori
+C001;Rossi & Figli Imballaggi S.r.l.;Via dell'Industria 14;47122;Forlì;FC;Italia;;;;M5UXCR1;01234567890;;2
+;;;;;;;;;;;;;
