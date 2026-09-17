@@ -26,7 +26,7 @@ e test approfonditi, `low` per documentazione.
 | T12 | v2 libreria: ordini XML, parametri ricezione, clienti da export | Opus 5 | medium | fatto | [#12](https://github.com/schultz-it/TerminalinoBru/pull/12) |
 | T13 | v2 bridge: clienti, numerazione, ricezione documenti | Sonnet 5 | high | fatto | [#13](https://github.com/schultz-it/TerminalinoBru/pull/13) |
 | T14 | v2 PWA: clienti, cliente nel DDT, Esportazioni | Opus 5 | high | fatto | [#14](https://github.com/schultz-it/TerminalinoBru/pull/14) |
-| T10 | Collaudo con Easyfatt reale | Opus 5 | high | da fare | |
+| T10 | Collaudo con Easyfatt reale | Opus 5 | high | in corso: passo 1 fatto | [#15](https://github.com/schultz-it/TerminalinoBru/pull/15) |
 | T11 | Guida utente | Sonnet 5 | low | da fare | |
 
 ## Prompt comune di apertura
@@ -406,7 +406,8 @@ sintattica) e non contiene segreti; il runbook è seguibile da chi non è svilup
 
 ## T10 — Collaudo con Easyfatt reale (dopo T14)
 
-Modello: **Opus 5**, effort **high**. Branch `task/10-collaudo`. Lavoro assistito: il titolare
+Modello: **Opus 5**, effort **high**. Branch `task/10-collaudo-2` (il passo 1 è in PR #15, branch
+`task/10-collaudo` già unito). Lavoro assistito: il titolare
 esegue i passi in Easyfatt e sul telefono e riporta gli esiti nella chat. Leggi anche
 `docs/PROTOCOLLI-DANEA.md`, `docs/RUNBOOK.md` e `docs/DECISIONI.md` (punti 49-64).
 
