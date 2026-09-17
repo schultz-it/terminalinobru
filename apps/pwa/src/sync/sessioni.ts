@@ -40,15 +40,18 @@ export function elencoSessioniBridge(
  * Sessioni locali non aperte il cui stato non combacia più con quello del bridge: `chiusa` diventa
  * `esportata` o `importata` dopo l'export dal PC, `esportata` torna `chiusa` se il PC rifà l'export.
  * Le sessioni aperte sul telefono non si toccano mai; quelle non ancora arrivate al bridge
- * (`statoBridge` senza il loro id) restano come sono.
+ * (`statoBridge` senza il loro id) restano come sono. Nemmeno quelle con un invio in coda
+ * (`inCoda`): il bridge conosce ancora la versione precedente, e prendere il suo stato farebbe
+ * scartare alla coda la richiusura da spedire.
  */
 export function sessioniDaAllineare(
   locali: readonly Pick<SessioneLocale, 'id' | 'stato'>[],
   statoBridge: ReadonlyMap<string, StatoSessione>,
+  inCoda: ReadonlySet<string> = new Set(),
 ): { id: string; stato: StatoSessione }[] {
   const risultato: { id: string; stato: StatoSessione }[] = [];
   for (const sessione of locali) {
-    if (sessione.stato === 'aperta') continue;
+    if (sessione.stato === 'aperta' || inCoda.has(sessione.id)) continue;
     const remoto = statoBridge.get(sessione.id);
     if (remoto === undefined || remoto === sessione.stato) continue;
     risultato.push({ id: sessione.id, stato: remoto });
@@ -63,9 +66,7 @@ export type OpzioniAllineamento = {
 };
 
 /** Esito dell'allineamento: non lancia mai, ogni problema torna come messaggio leggibile. */
-export type EsitoAllineamento =
-  | { ok: true; aggiornate: number }
-  | { ok: false; messaggio: string };
+export type EsitoAllineamento = { ok: true; aggiornate: number } | { ok: false; messaggio: string };
 
 /**
  * Allinea lo stato delle sessioni locali non aperte con quello del bridge. Solo lettura verso il
@@ -78,15 +79,21 @@ export async function allineaSessioniLocali(
   try {
     const elenco = await elencoSessioniBridge(impostazioni, recupera);
     const statoBridge = new Map(elenco.map((sessione) => [sessione.id, sessione.stato]));
-    const locali = await db.sessioni.toArray();
-    const daAggiornare = sessioniDaAllineare(locali, statoBridge);
-    if (daAggiornare.length > 0) {
-      await db.transaction('rw', db.sessioni, async () => {
-        for (const { id, stato } of daAggiornare) {
-          await db.sessioni.update(id, { stato });
-        }
-      });
-    }
+    // Lettura e scrittura nella stessa transazione: una sessione richiusa nel frattempo non
+    // deve ricevere lo stato vecchio del bridge.
+    const daAggiornare = await db.transaction('rw', db.sessioni, db.codaUpload, async () => {
+      const locali = await db.sessioni.toArray();
+      const inCoda = new Set(
+        (await db.codaUpload.where('tipo').equals('sessione').toArray()).map(
+          (voce) => voce.riferimento,
+        ),
+      );
+      const scelte = sessioniDaAllineare(locali, statoBridge, inCoda);
+      for (const { id, stato } of scelte) {
+        await db.sessioni.update(id, { stato });
+      }
+      return scelte;
+    });
     return { ok: true, aggiornate: daAggiornare.length };
   } catch (errore) {
     return { ok: false, messaggio: messaggioErrore(errore) };

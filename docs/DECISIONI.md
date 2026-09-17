@@ -65,3 +65,8 @@ Registro delle scelte prese e del perché. Si aggiunge in coda, non si riscrive 
 41. **Lo stato delle sessioni sul telefono si allinea al bridge in T08.** Il bridge è l'unica fonte di `esportata` e `importata` (le cambia il PC); dopo T07 sul telefono restano "chiusa". L'allineamento in sola lettura da `GET /api/sessioni` è stato aggiunto al testo di T08: rende utile la pulizia a 90 giorni e blocca, tramite `transizioneStato`, la riapertura di una sessione già esportata. Dal telefono si chiude solo una sessione `aperta`: la transizione `esportata → chiusa` resta al bridge.
 42. **La coda fa un giro in più se qualcuno lo chiede durante un giro.** Un giro legge le voci all'inizio; una sessione chiusa mentre un'altra viaggia non sarebbe partita fino al prossimo avvio o al prossimo ritorno della rete. Deciso in revisione di T07.
 43. **Una lettura con un foglio aperto viene scartata** con suono di errore e messaggio, invece di essere accodata: il magazziniere deve prima confermare o annullare la quantità che sta scrivendo.
+
+## 2026-09-17 — T08
+
+44. **L'allineamento degli stati salta le sessioni con un invio in coda.** Il bridge conosce ancora la versione precedente di una sessione riaperta e richiusa sul telefono: se l'allineamento prendesse il suo stato (`esportata`), la coda troverebbe la sessione non più `chiusa` e scarterebbe la richiusura senza spedirla. Lettura degli stati e scrittura avvengono nella stessa transazione Dexie. Deciso in revisione di T08.
+45. **La pagina Esportazioni filtra sul telefono, non sul bridge.** `GET /api/sessioni` senza filtro e selezione degli stati lato client: l'elenco è piccolo (decine di sessioni) e cambiare filtro non fa chiamate.

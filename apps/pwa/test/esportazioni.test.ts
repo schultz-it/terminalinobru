@@ -57,9 +57,7 @@ describe('nomeFileDaIntestazione', () => {
   });
 
   it('legge il nome senza virgolette', () => {
-    expect(nomeFileDaIntestazione('attachment; filename=file.txt', 'ripiego.txt')).toBe(
-      'file.txt',
-    );
+    expect(nomeFileDaIntestazione('attachment; filename=file.txt', 'ripiego.txt')).toBe('file.txt');
   });
 
   it('decodifica la forma filename* con codifica UTF-8', () => {

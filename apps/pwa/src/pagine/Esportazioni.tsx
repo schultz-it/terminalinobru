@@ -15,7 +15,11 @@ import { useImpostazioni } from '../hooks/useImpostazioni.js';
 import { useLiveQuery } from '../hooks/useLiveQuery.js';
 import { ETICHETTE_STATO, ETICHETTE_TIPO } from '../sessioni/modello.js';
 import { avviaInvioCoda, useStatoCoda } from '../sync/coda.js';
-import { allineaSessioniLocali, elencoSessioniBridge, type SessioneBridge } from '../sync/sessioni.js';
+import {
+  allineaSessioniLocali,
+  elencoSessioniBridge,
+  type SessioneBridge,
+} from '../sync/sessioni.js';
 
 type StatoElenco = { caricamento: boolean; sessioni?: SessioneBridge[]; errore?: string };
 
@@ -76,7 +80,10 @@ function useAzioniSessione(
   async function scarica() {
     setAzione({ tipo: 'scarico' });
     try {
-      const risposta = await chiamaBridge(connessione, `/api/sessioni/${sessione.id}/terminale.txt`);
+      const risposta = await chiamaBridge(
+        connessione,
+        `/api/sessioni/${sessione.id}/terminale.txt`,
+      );
       const blob = await risposta.blob();
       const nome = nomeFileDaIntestazione(
         risposta.headers.get('content-disposition'),
@@ -228,8 +235,8 @@ function SchedaSessione({
             <span className="etichetta block">Dispositivo: {sessione.dispositivo}</span>
           )}
           <span className="etichetta block">
-            {formattaNumero(sessione.conteggioRighe)} righe · {formattaNumero(sessione.sommaQuantita)}{' '}
-            pezzi
+            {formattaNumero(sessione.conteggioRighe)} righe ·{' '}
+            {formattaNumero(sessione.sommaQuantita)} pezzi
           </span>
         </div>
         <ChipStato stato={sessione.stato} />
@@ -272,7 +279,11 @@ function RigaTabella({
       </tr>
       <tr>
         <td colSpan={7} className="px-3 pb-3">
-          <AzioniSessione connessione={connessione} sessione={sessione} dopoModifica={dopoModifica} />
+          <AzioniSessione
+            connessione={connessione}
+            sessione={sessione}
+            dopoModifica={dopoModifica}
+          />
         </td>
       </tr>
     </>
