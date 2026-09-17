@@ -8,7 +8,12 @@ import {
   creaSessione,
   riapriSessione,
 } from '../src/sessioni/operazioni.js';
-import { avviaServizioCoda, creaServizioCoda, svuotaCoda } from '../src/sync/coda.js';
+import {
+  avviaServizioCoda,
+  creaServizioCoda,
+  svuotaCoda,
+  type ServizioCoda,
+} from '../src/sync/coda.js';
 import { fetchFinto, nuovoDb, prodotto } from './aiuti.js';
 
 const connessione = { urlBridge: 'https://bridge.esempio.it', token: 'segreto' };
@@ -33,6 +38,11 @@ async function sessioneChiusa(nome = 'Scaffale A') {
 
 const creata = () =>
   Response.json({ id: 'x', ricevutaIl: '2026-09-17T09:00:01Z' }, { status: 201 });
+
+/** Aspetta che il servizio non abbia più giri in corso, compresi quelli extra avviati da solo. */
+async function attendiFermo(servizio: ServizioCoda): Promise<void> {
+  while (servizio.stato().inCorso) await new Promise((risolvi) => setTimeout(risolvi, 0));
+}
 
 describe('svuotaCoda', () => {
   it('se il bridge non risponde tiene la voce, poi al tentativo riuscito la invia e la toglie', async () => {
@@ -193,7 +203,7 @@ describe('servizio della coda', () => {
     const manuale = servizio.invia();
     finestra.dispatchEvent(new Event('online'));
     await manuale;
-    await servizio.invia();
+    await attendiFermo(servizio);
 
     expect(chiamate).toHaveLength(1);
     expect(await db.codaUpload.count()).toBe(0);
@@ -204,6 +214,37 @@ describe('servizio della coda', () => {
     finestra.dispatchEvent(new Event('online'));
     expect(servizio.stato().inCorso).toBe(false);
     expect(chiamate).toHaveLength(1);
+  });
+
+  it('una sessione chiusa durante un giro parte da sola nel giro successivo', async () => {
+    db = nuovoDb();
+    await salvaImpostazioni(db, connessione);
+    let sblocca = () => {};
+    const bloccata = new Promise<void>((risolvi) => {
+      sblocca = risolvi;
+    });
+    const chiamate: string[] = [];
+    const recupera = (async (url: string | URL | Request) => {
+      chiamate.push(String(url));
+      // La prima POST resta appesa finché il test non la sblocca.
+      if (chiamate.length === 1) await bloccata;
+      return creata();
+    }) as typeof fetch;
+    const servizio = creaServizioCoda({ db, recupera, online: () => true });
+
+    await sessioneChiusa('Prima');
+    const primoGiro = servizio.invia();
+    // Mentre la prima viaggia se ne chiude un'altra: la richiesta si accoda al giro in corso.
+    await sessioneChiusa('Seconda');
+    expect(servizio.invia()).toBe(primoGiro);
+    sblocca();
+    await primoGiro;
+    // Finito il primo giro ne parte un altro da solo, senza premere niente.
+    expect(servizio.stato().inCorso).toBe(true);
+    await attendiFermo(servizio);
+    expect(chiamate).toHaveLength(2);
+    expect(await db.codaUpload.count()).toBe(0);
+    expect(servizio.stato().inCorso).toBe(false);
   });
 
   it('avvisa chi ascolta quando un giro inizia e finisce', async () => {

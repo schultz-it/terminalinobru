@@ -160,7 +160,9 @@ export async function chiudiSessione(
   await db.transaction('rw', db.sessioni, db.righe, db.codaUpload, async () => {
     const sessione = await db.sessioni.get(id);
     if (!sessione) throw new ErroreSessione('Sessione non trovata.');
-    if (!transizioneStato(sessione.stato, 'chiusa')) {
+    // `transizioneStato` ammette anche esportata → chiusa, ma quella la fa il bridge (T08):
+    // dal telefono si chiude solo una sessione aperta.
+    if (sessione.stato !== 'aperta' || !transizioneStato(sessione.stato, 'chiusa')) {
       throw new ErroreSessione('La sessione non è aperta.');
     }
     // Il bridge rifiuta le sessioni senza righe: meglio dirlo subito che lasciarle in coda.

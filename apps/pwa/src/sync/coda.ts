@@ -146,7 +146,10 @@ export async function svuotaCoda(opzioni: OpzioniCoda): Promise<EsitoCoda> {
 export type StatoCoda = { inCorso: boolean; ultimoEsito?: EsitoCoda };
 
 export type ServizioCoda = {
-  /** Avvia un giro. Se ne è già in corso uno restituisce quello: una voce non parte due volte. */
+  /**
+   * Avvia un giro. Se ne è già in corso uno restituisce quello (una voce non parte due volte) e
+   * ne fa partire un altro alla fine, per le voci aggiunte nel frattempo.
+   */
   invia: () => Promise<EsitoCoda>;
   stato: () => StatoCoda;
   iscrivi: (ascolta: () => void) => () => void;
@@ -164,6 +167,9 @@ export function creaServizioCoda(dipendenze: {
   const { db, recupera, online = () => navigator.onLine } = dipendenze;
   let stato: StatoCoda = { inCorso: false };
   let inCorso: Promise<EsitoCoda> | undefined;
+  // Richiesta arrivata durante un giro (per esempio una sessione chiusa mentre se ne inviava
+  // un'altra): le voci nuove non erano nell'elenco letto all'inizio, serve un giro in più.
+  let altroGiro = false;
   const ascoltatori = new Set<() => void>();
   const aggiorna = (nuovo: StatoCoda) => {
     stato = nuovo;
@@ -171,7 +177,10 @@ export function creaServizioCoda(dipendenze: {
   };
 
   const invia = (): Promise<EsitoCoda> => {
-    if (inCorso) return inCorso;
+    if (inCorso) {
+      altroGiro = true;
+      return inCorso;
+    }
     aggiorna({ ...stato, inCorso: true });
     inCorso = (async (): Promise<EsitoCoda> => {
       if (!online()) {
@@ -184,6 +193,10 @@ export function creaServizioCoda(dipendenze: {
       .then((esito) => {
         inCorso = undefined;
         aggiorna({ inCorso: false, ultimoEsito: esito });
+        if (altroGiro) {
+          altroGiro = false;
+          void invia();
+        }
         return esito;
       });
     return inCorso;
