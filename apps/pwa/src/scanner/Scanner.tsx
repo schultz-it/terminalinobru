@@ -36,6 +36,11 @@ export type ProprietaScanner = {
   incorporato?: boolean;
   /** Etichetta accessibile del pulsante di chiusura. */
   etichettaChiudi?: string;
+  /**
+   * Sospende l'analisi dei fotogrammi (la fotocamera resta accesa) mentre chi usa lo scanner ha
+   * una finestra aperta e scarterebbe comunque le letture: il processore resta all'interfaccia.
+   */
+  inPausa?: boolean;
 };
 
 /**
@@ -51,6 +56,7 @@ export function Scanner({
   children,
   incorporato = false,
   etichettaChiudi = 'Chiudi scanner',
+  inPausa = false,
 }: ProprietaScanner) {
   const video = useRef<HTMLVideoElement>(null);
   const { impostazioni } = useImpostazioni();
@@ -79,9 +85,13 @@ export function Scanner({
     }
   }, []);
 
-  const fotocamera = useFotocamera(video, (codice) => {
-    if (antiRimbalzo.current(codice, performance.now())) void emetti(codice, 'fotocamera');
-  });
+  const fotocamera = useFotocamera(
+    video,
+    (codice) => {
+      if (antiRimbalzo.current(codice, performance.now())) void emetti(codice, 'fotocamera');
+    },
+    { inPausa },
+  );
 
   // Lettore Bluetooth o USB in modalità tastiera, attivo finché lo scanner è aperto.
   useEffect(
@@ -239,7 +249,7 @@ export function Scanner({
         </form>
         <p className="px-4 pb-3 text-sm">
           {stato.fase === 'attiva'
-            ? 'Inquadra il codice nella cornice. Lettore Bluetooth pronto.'
+            ? `Inquadra il codice nella cornice${stato.origine === 'polyfill' ? ' (lettura software)' : ''}. Lettore Bluetooth pronto.`
             : 'Lettore Bluetooth pronto.'}
         </p>
         {!incorporato && children}

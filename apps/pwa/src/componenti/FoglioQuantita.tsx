@@ -35,12 +35,14 @@ export function FoglioQuantita({
   totaleAttuale?: number | undefined;
   valoreIniziale?: string;
   etichettaConferma?: string;
-  onConferma: (quantita: number) => void;
+  /** Salva la quantità; se restituisce una promessa il foglio resta bloccato finché non si risolve. */
+  onConferma: (quantita: number) => void | Promise<void>;
   onAnnulla: () => void;
 }) {
   const [testo, setTesto] = useState(valoreIniziale);
   const [errore, setErrore] = useState<string>();
   const [avvisoZero, setAvvisoZero] = useState(false);
+  const [inCorso, setInCorso] = useState(false);
   const campo = useRef<HTMLInputElement>(null);
   const montato = useRef(true);
   const idTitolo = useId();
@@ -66,22 +68,27 @@ export function FoglioQuantita({
     else cambia(testo + tasto);
   }
 
-  function conferma() {
+  async function conferma() {
+    if (inCorso) return;
     const lettura = leggiQuantita(testo);
     if (lettura.tipo === 'errore') {
       setErrore(lettura.messaggio);
       return;
     }
-    if (lettura.tipo === 'zero') {
-      // Lo zero serve (inventario di un prodotto esaurito) ma va confermato due volte.
-      if (!avvisoZero) {
-        setAvvisoZero(true);
-        return;
-      }
-      onConferma(0);
+    // Lo zero serve (inventario di un prodotto esaurito) ma va confermato due volte.
+    if (lettura.tipo === 'zero' && !avvisoZero) {
+      setAvvisoZero(true);
       return;
     }
-    onConferma(lettura.valore);
+    const valore = lettura.tipo === 'zero' ? 0 : lettura.valore;
+    // Un solo salvataggio per foglio: un secondo tocco su "Aggiungi", magari perché il telefono
+    // è lento, non deve creare una seconda riga. Nel frattempo tutti i tasti sono bloccati.
+    setInCorso(true);
+    try {
+      await onConferma(valore);
+    } finally {
+      if (montato.current) setInCorso(false);
+    }
   }
 
   return (
@@ -139,7 +146,7 @@ export function FoglioQuantita({
           onKeyDown={(evento) => {
             if (evento.key === 'Enter') {
               evento.preventDefault();
-              conferma();
+              void conferma();
             }
           }}
         />
@@ -160,7 +167,8 @@ export function FoglioQuantita({
               key={tasto}
               type="button"
               aria-label={tasto === 'cancella' ? 'Cancella una cifra' : tasto}
-              className="flex min-h-14 items-center justify-center rounded-[10px] border border-grigio-bordo bg-bianco text-4xl font-semibold tabular-nums active:bg-grigio-sfondo"
+              className="flex min-h-14 items-center justify-center rounded-[10px] border border-grigio-bordo bg-bianco text-4xl font-semibold tabular-nums active:bg-grigio-sfondo disabled:opacity-50"
+              disabled={inCorso}
               onPointerDown={tieniFuoco}
               onClick={() => premi(tasto)}
             >
@@ -172,14 +180,17 @@ export function FoglioQuantita({
         <button
           type="button"
           className="pulsante-primario min-h-14 w-full text-lg"
+          disabled={inCorso}
+          aria-busy={inCorso}
           onPointerDown={tieniFuoco}
-          onClick={conferma}
+          onClick={() => void conferma()}
         >
-          {etichettaConferma}
+          {inCorso ? 'Salvataggio…' : etichettaConferma}
         </button>
         <button
           type="button"
           className="pulsante-secondario"
+          disabled={inCorso}
           onPointerDown={tieniFuoco}
           onClick={onAnnulla}
         >
